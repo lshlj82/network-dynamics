@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dynamics on networks · interactive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDF0F4; --panel:#FFFFFF; --ink:#16243A; --muted:#5A6678; --rule:#D2D8E0; --rule-strong:#AEB7C4;
+  --s:#3D6FD6; --i:#E0443A; --r:#2E9B5A; --off:#B8C0CC; --focus:#3D6FD6;
+  --sans:"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif:"Source Serif 4", "Times New Roman", Georgia, serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#131A25; --panel:#1B2432; --ink:#E5EAF1; --muted:#9AA6B7; --rule:#2D394B; --rule-strong:#4A586C;
+    --s:#6A93EC; --i:#F0625A; --r:#4CC07E; --off:#56637A; --focus:#6A93EC;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131A25; --panel:#1B2432; --ink:#E5EAF1; --muted:#9AA6B7; --rule:#2D394B; --rule-strong:#4A586C;
+  --s:#6A93EC; --i:#F0625A; --r:#4CC07E; --off:#56637A; --focus:#6A93EC;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1320px;margin:0 auto;padding:20px clamp(12px,3vw,32px) 40px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;margin-bottom:16px}
+header h1{font-family:var(--serif);font-weight:400;font-size:clamp(28px,4vw,40px);line-height:1.1;margin:0;letter-spacing:-.01em}
+header .src{margin-left:auto;color:var(--muted);font-size:13px}
+
+nav.tabs{display:flex;flex-wrap:wrap;gap:10px 22px;margin-bottom:16px;border-bottom:1px solid var(--rule);padding-bottom:12px}
+.group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.group .sec{font-family:var(--serif);font-size:15px;color:var(--muted);margin-right:4px;white-space:nowrap}
+.tab{font:inherit;font-size:14px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer}
+.tab:hover{border-color:var(--rule-strong)}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.panel{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;align-items:start}
+.panel[hidden]{display:none}
+.stage{background:var(--panel);border:1px solid var(--rule);border-radius:10px;position:relative;min-width:0}
+.stage canvas.main{display:block;width:100%;height:min(74vh,760px);min-height:320px;touch-action:manipulation}
+.stage .hint{margin:0;padding:0 14px 10px;font-size:13px;color:var(--muted)}
+.legend{position:absolute;right:14px;top:12px;display:flex;gap:12px;font-size:13px;color:var(--muted);flex-wrap:wrap;justify-content:flex-end;pointer-events:none}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c);margin-right:5px;vertical-align:-1px}
+
+.side{min-width:0}
+.side h2{font-family:var(--serif);font-weight:600;font-size:23px;line-height:1.2;margin:0 0 6px}
+.lead{margin:0 0 12px;color:var(--ink);max-width:62ch}
+.formula{font-family:var(--serif);font-size:17px;background:var(--panel);border-left:3px solid var(--ink);padding:9px 12px;margin:0 0 14px;line-height:1.55;overflow-x:auto}
+.formula i,.ctl i,.ro i,.lead i,.note i{font-family:var(--serif);font-style:italic}
+.formula small{font-family:var(--sans);font-size:12.5px;color:var(--muted);display:block;margin-top:2px}
+
+.controls{display:grid;gap:9px;margin-bottom:12px}
+.ctl{display:grid;grid-template-columns:minmax(118px,auto) 1fr 52px;align-items:center;gap:10px;font-size:14px}
+.ctl label{color:var(--muted)}
+.ctl output{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--serif);font-size:15px}
+.ctl input[type=range]{width:100%;accent-color:var(--ink)}
+.ctl select{grid-column:2 / 4;font:inherit;font-size:14px;padding:5px 8px;border:1px solid var(--rule-strong);border-radius:6px;background:var(--panel);color:var(--ink)}
+
+.buttons{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.btn{font:inherit;font-size:14px;padding:7px 13px;border-radius:7px;border:1px solid var(--rule-strong);background:var(--panel);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink);min-width:72px}
+.btn:disabled{opacity:.5;cursor:default}
+
+.readouts{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px 14px;margin:0 0 14px}
+.ro{border-top:1px solid var(--rule);padding-top:5px}
+.ro dt{font-size:12.5px;color:var(--muted)}
+.ro dd{margin:0;font-family:var(--serif);font-size:20px;font-variant-numeric:tabular-nums;line-height:1.2}
+.status{font-size:14px;color:var(--muted);margin:-6px 0 12px;min-height:1.5em}
+
+.chart{margin-bottom:12px}
+.chart figcaption{font-size:12.5px;color:var(--muted);margin-bottom:3px}
+.chart canvas{display:block;width:100%;background:var(--panel);border:1px solid var(--rule);border-radius:8px}
+.refs{margin-top:14px;border-top:1px solid var(--rule);padding-top:8px;font-size:13.5px}
+.refs summary{cursor:pointer;color:var(--ink);font-weight:500}
+.refs ol{margin:8px 0 0;padding-left:20px;color:var(--muted)}
+.refs li{margin-bottom:6px;max-width:62ch}
+.refs li i{font-family:var(--serif);font-style:italic}
+footer{margin-top:28px;padding-top:12px;border-top:1px solid var(--rule);color:var(--muted);font-size:13px}
+footer i{font-family:var(--serif)}
+.note{font-size:13.5px;color:var(--muted);max-width:62ch;margin:6px 0 0}
+
+@media (max-width:900px){
+  .panel{grid-template-columns:1fr}
+  .stage canvas.main{height:min(62vh,560px)}
+  header .src{margin-left:0;width:100%}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Dynamics on networks</h1>
+  <span class="src">Created by Claude Opus 5.5 based on the lecture slides by Sang Hoon Lee</span>
+</header>
+<nav class="tabs" id="tabs" role="tablist" aria-label="Models"></nav>
+<main id="panels"></main>
+<footer>Interactive companion to the lecture “Dynamics” (Chapter 7 of <i>A First Course in Network Science</i>). Created by Claude Opus 5.5 based on the lecture slides by Sang Hoon Lee.</footer>
+</div>
+
+<script>
+"use strict";
+/* ---------- utilities ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const el=h=>{const t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstElementChild;};
+const ri=n=>Math.floor(Math.random()*n);
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=ri(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+function erf(x){const s=Math.sign(x);x=Math.abs(x);const t=1/(1+0.3275911*x);
+  const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);return s*y;}
+const Phi=z=>0.5*(1+erf(z/Math.SQRT2));
+const pct=x=>(100*x).toFixed(x<0.1&&x>0?1:0)+'%';
+
+let TK={};
+function readTokens(){const cs=getComputedStyle(document.documentElement);
+  ['--paper','--panel','--ink','--muted','--rule','--rule-strong','--s','--i','--r','--off'].forEach(k=>TK[k.slice(2)]=cs.getPropertyValue(k).trim());}
+readTokens();
+
+function fitCanvas(cv){const r=cv.getBoundingClientRect();const d=window.devicePixelRatio||1;
+  const w=Math.max(1,Math.round(r.width*d)),h=Math.max(1,Math.round(r.height*d));
+  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
+  const ctx=cv.getContext('2d');ctx.setTransform(d,0,0,d,0,0);return {ctx,w:r.width,h:r.height};}
+
+function hex2rgb(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return [n>>16&255,n>>8&255,n&255];}
+function ramp(t){const a=hex2rgb(TK.s),m=[150,96,200],b=hex2rgb(TK.i);let c;
+  if(t<.5){const u=t*2;c=a.map((v,k)=>v+(m[k]-v)*u);}else{const u=(t-.5)*2;c=m.map((v,k)=>v+(b[k]-v)*u);}
+  return `rgb(${c.map(Math.round).join(',')})`;}
+
+/* ---------- graphs ---------- */
+function makeGraph(type,N,k){
+  const adj=Array.from({length:N},()=>[]);const has=new Set();
+  const add=(a,b)=>{if(a===b)return false;const key=a<b?a*N+b:b*N+a;if(has.has(key))return false;has.add(key);adj[a].push(b);adj[b].push(a);return true;};
+  if(type==='ba'){
+    const m=Math.max(1,Math.round(k/2));const tg=[];
+    for(let i=0;i<=m;i++)for(let j=0;j<i;j++){add(i,j);tg.push(i,j);}
+    for(let i=m+1;i<N;i++){const ch=new Set();let guard=0;while(ch.size<m&&guard++<1000)ch.add(tg[ri(tg.length)]);
+      for(const c of ch){if(add(i,c))tg.push(i,c);}}
+  }else{
+    const M=Math.round(N*k/2);let guard=0;let e=0;while(e<M&&guard++<M*50){if(add(ri(N),ri(N)))e++;}
+  }
+  return finishGraph({N,adj,type});
+}
+function finishGraph(g){const N=g.N;let s=0,s2=0,mx=0,hub=0;
+  for(let i=0;i<N;i++){const d=g.adj[i].length;s+=d;s2+=d*d;if(d>mx){mx=d;hub=i;}}
+  g.k=s/N;g.k2=s2/N;g.kmax=mx;g.hub=hub;return g;}
+function frLayout(g,iters,t0,init){
+  const N=g.N;if(init||!g.px){g.px=new Float64Array(N);g.py=new Float64Array(N);
+    for(let i=0;i<N;i++){const a=Math.random()*6.283,r=Math.sqrt(Math.random())*.5;g.px[i]=r*Math.cos(a);g.py[i]=r*Math.sin(a);}}
+  const px=g.px,py=g.py,k=Math.sqrt(1/N),k2=k*k;const dx=new Float64Array(N),dy=new Float64Array(N);
+  for(let it=0;it<iters;it++){const t=t0*(1-it/iters)+0.002;dx.fill(0);dy.fill(0);
+    for(let i=0;i<N;i++){const xi=px[i],yi=py[i];for(let j=0;j<i;j++){const ax=xi-px[j],ay=yi-py[j];const d2=ax*ax+ay*ay+1e-9;const f=k2/d2;
+      dx[i]+=ax*f;dy[i]+=ay*f;dx[j]-=ax*f;dy[j]-=ay*f;}}
+    for(let a=0;a<N;a++){for(const b of g.adj[a]){if(b<a)continue;const ax=px[a]-px[b],ay=py[a]-py[b];const d=Math.sqrt(ax*ax+ay*ay)+1e-9;const f=d/k;
+      dx[a]-=ax*f;dy[a]-=ay*f;dx[b]+=ax*f;dy[b]+=ay*f;}}
+    for(let i=0;i<N;i++){dx[i]-=px[i]*k*4;dy[i]-=py[i]*k*4;const L=Math.sqrt(dx[i]*dx[i]+dy[i]*dy[i]);
+      if(L>0){const s=Math.min(L,t)/L;px[i]+=dx[i]*s;py[i]+=dy[i]*s;}}
+  }
+}
+function components(g){const N=g.N,c=new Int32Array(N).fill(-1);let n=0,big=0;
+  for(let s=0;s<N;s++){if(c[s]>=0)continue;let sz=0;const q=[s];c[s]=n;while(q.length){const u=q.pop();sz++;for(const v of g.adj[u])if(c[v]<0){c[v]=n;q.push(v);}}
+    big=Math.max(big,sz);n++;}return {n,big};}
+
+/* ---------- network drawing ---------- */
+function drawNet(cv,g,o){
+  const {ctx,w,h}=fitCanvas(cv);ctx.clearRect(0,0,w,h);
+  const pad=26;const xs=[],ys=[];
+  for(let i=0;i<g.N;i++)if(g.adj[i].length){xs.push(g.px[i]);ys.push(g.py[i]);}
+  if(!xs.length){for(let i=0;i<g.N;i++){xs.push(g.px[i]);ys.push(g.py[i]);}}
+  xs.sort((a,b)=>a-b);ys.sort((a,b)=>a-b);const q=Math.floor(xs.length*0.01);
+  const x0=xs[q],x1=xs[xs.length-1-q],y0=ys[q],y1=ys[ys.length-1-q];
+  const sc=Math.min((w-2*pad)/(x1-x0||1),(h-2*pad-18)/(y1-y0||1));
+  const ox=(w-(x1-x0)*sc)/2-x0*sc,oy=(h-18-(y1-y0)*sc)/2-y0*sc+4;
+  const X=i=>ox+clamp(g.px[i],x0,x1)*sc,Y=i=>oy+clamp(g.py[i],y0,y1)*sc;
+  const base=clamp(Math.min(w,h)/Math.sqrt(g.N)*0.15,2.2,8);
+  const rad=i=>o.sizeByDegree?base*(0.55+0.45*Math.sqrt(g.adj[i].length/(g.k||1))):base;
+  ctx.lineCap='round';
+  ctx.strokeStyle=TK['rule-strong'];ctx.lineWidth=0.7;ctx.globalAlpha=0.75;ctx.beginPath();
+  for(let a=0;a<g.N;a++)for(const b of g.adj[a]){if(b<a)continue;if(o.edgeColor){continue;}ctx.moveTo(X(a),Y(a));ctx.lineTo(X(b),Y(b));}
+  ctx.stroke();ctx.globalAlpha=1;
+  if(o.edgeColor){for(let a=0;a<g.N;a++)for(const b of g.adj[a]){if(b<a)continue;const ec=o.edgeColor(a,b);
+      ctx.strokeStyle=ec.c;ctx.lineWidth=ec.w||0.8;ctx.globalAlpha=ec.a??0.8;ctx.setLineDash(ec.dash||[]);ctx.beginPath();ctx.moveTo(X(a),Y(a));ctx.lineTo(X(b),Y(b));ctx.stroke();}
+    ctx.setLineDash([]);ctx.globalAlpha=1;}
+  if(o.highlight){for(const [a,b,ok] of o.highlight){ctx.strokeStyle=ok?TK.i:TK.muted;ctx.lineWidth=ok?2.4:1.2;ctx.setLineDash(ok?[]:[3,3]);
+      ctx.beginPath();ctx.moveTo(X(a),Y(a));ctx.lineTo(X(b),Y(b));ctx.stroke();}ctx.setLineDash([]);}
+  for(let i=0;i<g.N;i++){const r=rad(i);ctx.beginPath();ctx.arc(X(i),Y(i),r,0,6.2832);ctx.fillStyle=o.color(i);ctx.fill();
+    ctx.lineWidth=1;ctx.strokeStyle=TK.panel;ctx.stroke();
+    if(o.ring&&o.ring(i)){ctx.beginPath();ctx.arc(X(i),Y(i),r+2.6,0,6.2832);ctx.strokeStyle=TK.ink;ctx.lineWidth=1.6;ctx.stroke();}}
+  cv._hit={X,Y,rad,N:g.N};
+}
+function hitNode(cv,e){const m=cv._hit;if(!m)return -1;const b=cv.getBoundingClientRect();const x=e.clientX-b.left,y=e.clientY-b.top;
+  let best=-1,bd=1e9;for(let i=0;i<m.N;i++){const d=Math.hypot(m.X(i)-x,m.Y(i)-y);if(d<bd){bd=d;best=i;}}
+  return bd<=m.rad(best)+8?best:-1;}
+
+/* ---------- charts ---------- */
+function niceTicks(a,b,n){const span=b-a||1;const st=Math.pow(10,Math.floor(Math.log10(span/n)));const err=span/n/st;
+  const step=st*(err>=7.5?10:err>=3.5?5:err>=1.5?2:1);const out=[];for(let v=Math.ceil(a/step)*step;v<=b+1e-9;v+=step)out.push(+v.toFixed(10));return out;}
+function chart(cv,o){
+  const {ctx,w,h}=fitCanvas(cv);ctx.clearRect(0,0,w,h);
+  const L=o.left??40,R=o.right??12,T=12,B=o.xLabel?36:24;const pw=w-L-R,ph=h-T-B;
+  const xa=o.xMin??0,xb=o.xMax,ya=o.yMin??0,yb=o.yMax??1;
+  const X=x=>L+(x-xa)/(xb-xa)*pw,Y=y=>T+ph-(y-ya)/(yb-ya)*ph;
+  ctx.font='11.5px "Instrument Sans", system-ui, sans-serif';ctx.fillStyle=TK.muted;ctx.strokeStyle=TK.rule;ctx.lineWidth=1;
+  ctx.textAlign='right';ctx.textBaseline='middle';
+  for(const v of niceTicks(ya,yb,o.yTicks||4)){ctx.beginPath();ctx.moveTo(L,Y(v));ctx.lineTo(L+pw,Y(v));ctx.stroke();ctx.fillText(o.yFmt?o.yFmt(v):v,L-6,Y(v));}
+  ctx.textAlign='center';ctx.textBaseline='top';
+  for(const v of niceTicks(xa,xb,o.xTicks||5)){ctx.fillText(o.xFmt?o.xFmt(v):v,X(v),T+ph+5);}
+  ctx.strokeStyle=TK['rule-strong'];ctx.beginPath();ctx.moveTo(L,T);ctx.lineTo(L,T+ph);ctx.lineTo(L+pw,T+ph);ctx.stroke();
+  if(o.xLabel){ctx.font='italic 13px "Source Serif 4", Georgia, serif';ctx.fillText(o.xLabel,L+pw/2,T+ph+19);}
+  if(o.yLabel){ctx.save();ctx.translate(Math.max(11,L-30),T+ph/2);ctx.rotate(-Math.PI/2);ctx.font='italic 13px "Source Serif 4", Georgia, serif';ctx.textBaseline='middle';ctx.fillText(o.yLabel,0,0);ctx.restore();}
+  ctx.save();ctx.beginPath();ctx.rect(L,T-2,pw,ph+4);ctx.clip();
+  for(const v of (o.vlines||[])){ctx.strokeStyle=v.color||TK.muted;ctx.setLineDash([4,4]);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(X(v.x),T);ctx.lineTo(X(v.x),T+ph);ctx.stroke();ctx.setLineDash([]);}
+  for(const s of (o.bars||[])){ctx.fillStyle=s.color;ctx.globalAlpha=.85;const bw=pw/s.ys.length;
+    s.ys.forEach((y,i)=>{if(y>0)ctx.fillRect(L+i*bw+1,Y(y),bw-2,Y(ya)-Y(y));});ctx.globalAlpha=1;}
+  for(const s of (o.series||[])){const pts=s.pts||s.ys.map((y,i)=>[i*(s.dx||1)+(s.x0||0),y]);if(!pts.length)continue;
+    ctx.strokeStyle=s.color;ctx.lineWidth=s.width||1.8;ctx.setLineDash(s.dash||[]);ctx.beginPath();
+    pts.forEach(([x,y],i)=>i?ctx.lineTo(X(x),Y(y)):ctx.moveTo(X(x),Y(y)));ctx.stroke();ctx.setLineDash([]);
+    if(s.dots){ctx.fillStyle=s.color;for(const [x,y] of pts){ctx.beginPath();ctx.arc(X(x),Y(y),2.6,0,6.3);ctx.fill();}}}
+  ctx.restore();
+  if(o.empty){ctx.fillStyle=TK.muted;ctx.font='13px "Instrument Sans", system-ui, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(o.empty,L+pw/2,T+ph/2);}
+  return {ctx,X,Y,L,T,pw,ph};
+}
+
+/* ---------- panel builder ---------- */
+const groups=[{sec:'7.1',name:'Influence',tabs:[]},{sec:'7.2',name:'Epidemics',tabs:[]},{sec:'7.3',name:'Opinions',tabs:[]}];
+const models={};
+function buildPanel(def){
+  const p=el(`<section class="panel" id="p-${def.id}" role="tabpanel" hidden>
+    <div class="stage"><canvas class="main" role="img" aria-label="${def.stageLabel}"></canvas>
+      ${def.legend?`<div class="legend">${def.legend.map(([c,t])=>`<span style="--c:var(${c})">${t}</span>`).join('')}</div>`:''}
+      <p class="hint">${def.hint||''}</p></div>
+    <div class="side"><h2>${def.title}</h2><p class="lead">${def.lead}</p>
+      <div class="formula">${def.formula||''}</div>
+      <div class="controls"></div><div class="buttons"></div><p class="status" aria-live="polite"></p>
+      <dl class="readouts"></dl><div class="charts"></div>${def.note?`<p class="note">${def.note}</p>`:''}${def.refs?`<details class="refs"><summary>References</summary><ol>${def.refs.map(r=>`<li>${r}</li>`).join('')}</ol></details>`:''}</div></section>`);
+  const api={root:p,canvas:$('canvas.main',p),vals:{},charts:{},outs:{}};
+  const C=$('.controls',p);
+  for(const c of def.controls||[]){
+    if(c.type==='select'){const n=el(`<div class="ctl"><label for="${def.id}-${c.key}">${c.label}</label><select id="${def.id}-${c.key}">${c.options.map(([v,t])=>`<option value="${v}"${v===c.value?' selected':''}>${t}</option>`).join('')}</select></div>`);
+      const s=$('select',n);api.vals[c.key]=c.value;s.onchange=()=>{api.vals[c.key]=s.value;def.onChange&&def.onChange(c.key);};C.append(n);api['ctl_'+c.key]=n;}
+    else{const fmt=c.fmt||(v=>v);const n=el(`<div class="ctl"><label for="${def.id}-${c.key}">${c.label}</label><input type="range" id="${def.id}-${c.key}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.value}"><output>${fmt(c.value)}</output></div>`);
+      const s=$('input',n),out=$('output',n);api.vals[c.key]=+c.value;
+      s.oninput=()=>{api.vals[c.key]=+s.value;out.textContent=fmt(+s.value);def.onInput&&def.onInput(c.key);};
+      s.onchange=()=>{def.onChange&&def.onChange(c.key);};C.append(n);api['ctl_'+c.key]=n;}
+  }
+  const B=$('.buttons',p);api.btn={};
+  for(const [k,t,cls] of def.buttons||[]){const b=el(`<button class="btn ${cls||''}" type="button">${t}</button>`);B.append(b);api.btn[k]=b;}
+  const R=$('.readouts',p);for(const [k,t] of def.readouts||[]){const n=el(`<div class="ro"><dt>${t}</dt><dd>–</dd></div>`);R.append(n);api.outs[k]=$('dd',n);}
+  const H=$('.charts',p);for(const [k,cap,ht] of def.charts||[]){const n=el(`<figure class="chart" style="margin:0 0 12px"><figcaption>${cap}</figcaption><canvas style="height:${ht||150}px"></canvas></figure>`);H.append(n);api.charts[k]=$('canvas',n);api['cap_'+k]=$('figcaption',n);}
+  api.out=(k,v)=>{api.outs[k].textContent=v;};
+  api.status=t=>{$('.status',p).textContent=t;};
+  api.formula=h=>{$('.formula',p).innerHTML=h;};
+  api.hint=h=>{$('.hint',p).innerHTML=h;};
+  $('#panels').append(p);
+  return api;
+}
+/* runner: play/pause loop */
+function attachRunner(m){
+  let playing=false,last=0,acc=0;const P=m.ui;
+  const setBtn=()=>{P.btn.play.textContent=playing?'Pause':'Play';};
+  function frame(ts){if(!playing)return;const dt=Math.min(0.25,(ts-last)/1000);last=ts;acc+=dt*(m.speed?m.speed():P.vals.speed||5);
+    let n=Math.floor(acc);acc-=n;n=Math.min(n,m.maxPerFrame||40);
+    for(let i=0;i<n;i++){if(m.done()){stop();break;}m.step();}
+    m.render();if(m.done())stop();if(playing)requestAnimationFrame(frame);}
+  function start(){if(m.done())m.reset();playing=true;last=performance.now();acc=1;setBtn();requestAnimationFrame(frame);}
+  function stop(){playing=false;setBtn();}
+  P.btn.play.onclick=()=>playing?stop():start();
+  if(P.btn.step)P.btn.step.onclick=()=>{stop();if(!m.done())m.step();m.render();};
+  if(P.btn.reset)P.btn.reset.onclick=()=>{stop();m.reset();m.render();};
+  m.stop=stop;m.isPlaying=()=>playing;setBtn();
+}
+function register(sec,id,label,m){groups.find(g=>g.sec===sec).tabs.push({id,label});models[id]=m;}
+
+const speedCtl=(v=5,max=30)=>({key:'speed',label:'Speed (steps/s)',min:1,max,step:1,value:v});
+const netCtl=v=>({type:'select',key:'net',label:'Network',options:[['er','Random (Erdős–Rényi)'],['ba','Scale-free (Barabási–Albert)']],value:v||'er'});
+const kCtl=(v=4,max=12)=>({key:'k',label:'Mean degree <i>⟨k⟩</i>',min:2,max,step:1,value:v});
+
+/* =========================================================
+   7.1  Fractional threshold model
+   ========================================================= */
+(function(){
+  const N=220;
+  const ui=buildPanel({id:'thr',refs:["F. Menczer, S. Fortunato, and C. A. Davis, <i>A First Course in Network Science</i>, Cambridge University Press (2020), Ch. 7.", "M. Granovetter, “Threshold models of collective behavior,” <i>American Journal of Sociology</i> 83(6), 1420–1443 (1978).", "D. J. Watts, “A simple model of global cascades on random networks,” <i>PNAS</i> 99(9), 5766–5771 (2002).", "M. S. Granovetter, “The strength of weak ties,” <i>American Journal of Sociology</i> 78(6), 1360–1380 (1973).", "C. Shao et al., “The spread of low-credibility content by social bots,” <i>Nature Communications</i> 9, 4787 (2018).", "P. Erdős and A. Rényi, “On random graphs I,” <i>Publicationes Mathematicae Debrecen</i> 6, 290–297 (1959).", "A.-L. Barabási and R. Albert, “Emergence of scaling in random networks,” <i>Science</i> 286, 509–512 (1999)."],title:'Threshold model',
+    stageLabel:'Network showing active and inactive nodes in the threshold model',
+    legend:[['--off','inactive'],['--i','active']],
+    hint:'Click nodes to switch them on or off as initial adopters.',
+    lead:'A node adopts once a large enough share of its neighbors has adopted. Each person has their own threshold, like the honey-butter-chip example: some try every new snack, others wait until most friends have.',
+    formula:'activate <i>i</i> if &nbsp;<i>n</i><sub><i>i</i></sub><sup>on</sup> / <i>k</i><sub><i>i</i></sub> ≥ <i>θ</i><sub><i>i</i></sub><small>fractional threshold model, synchronous update</small>',
+    controls:[netCtl('er'),kCtl(5),
+      {key:'theta',label:'Mean threshold <i>θ</i>',min:0.05,max:0.9,step:0.01,value:0.22,fmt:v=>v.toFixed(2)},
+      {key:'sd',label:'Threshold spread <i>σ</i>',min:0,max:0.3,step:0.01,value:0,fmt:v=>v.toFixed(2)},
+      {key:'seeds',label:'Random adopters',min:1,max:20,step:1,value:3},speedCtl(4)],
+    buttons:[['play','Play','primary'],['step','Step'],['reset','Reset'],['net','New network']],
+    readouts:[['frac','Active'],['t','Step'],['seeds','Initial adopters']],
+    charts:[['ts','Active fraction over time',140]],
+    note:'Try θ around 0.2–0.3 on the random network: a few seeds either fizzle or take over almost everything. Raise σ to give people different thresholds.',
+    onChange:k=>{if(k==='net'||k==='k')newNet();else if(k!=='speed'){m.stop();m.reset();m.render();}}
+  });
+  let g,theta,act,seedMask,hist,t,justOn,finished;
+  const m={ui,
+    reset(){theta=new Float64Array(N);for(let i=0;i<N;i++)theta[i]=clamp(ui.vals.theta+ui.vals.sd*gauss(),0.01,1);
+      act=new Uint8Array(N);seedMask=new Uint8Array(N);justOn=new Uint8Array(N);
+      const ids=shuffle([...Array(N).keys()]).slice(0,ui.vals.seeds);for(const i of ids){act[i]=1;seedMask[i]=1;}
+      t=0;finished=false;hist=[frac()];ui.status('');},
+    step(){const nw=[];for(let i=0;i<N;i++){if(act[i])continue;const k=g.adj[i].length;if(!k)continue;let on=0;for(const j of g.adj[i])on+=act[j];if(on/k>=theta[i])nw.push(i);}
+      justOn.fill(0);for(const i of nw){act[i]=1;justOn[i]=1;}t++;hist.push(frac());
+      if(!nw.length){finished=true;const f=frac();ui.status(f>0.9?`Global cascade: ${pct(f)} adopted.`:`Cascade stopped at ${pct(f)}. Add adopters or lower θ to unblock it.`);}},
+    done:()=>finished,
+    render(){drawNet(ui.canvas,g,{color:i=>act[i]?TK.i:TK.off,ring:i=>seedMask[i]||justOn[i]});
+      ui.out('frac',pct(frac()));ui.out('t',t);ui.out('seeds',seedMask.reduce((a,b)=>a+b,0));
+      chart(ui.charts.ts,{xMax:Math.max(10,hist.length-1),series:[{ys:hist,color:TK.i}],yFmt:v=>v*100+'%'});}
+  };
+  const frac=()=>act.reduce((a,b)=>a+b,0)/N;
+  function newNet(){m.stop&&m.stop();g=makeGraph(ui.vals.net,N,ui.vals.k);frLayout(g,260,0.12,true);m.reset();m.render();}
+  ui.btn.net.onclick=newNet;
+  ui.canvas.addEventListener('click',e=>{const i=hitNode(ui.canvas,e);if(i<0)return;act[i]=act[i]?0:1;seedMask[i]=act[i];finished=false;if(t===0)hist=[frac()];ui.status('');m.render();});
+  attachRunner(m);m.init=newNet;
+  register('7.1','thr','Threshold',m);
+})();
+
+/* =========================================================
+   7.1  Granovetter mean-field: r(t+1)=F(r(t))
+   ========================================================= */
+(function(){
+  const ui=buildPanel({id:'gra',refs:["F. Menczer, S. Fortunato, and C. A. Davis, <i>A First Course in Network Science</i>, Cambridge University Press (2020), Ch. 7.", "M. Granovetter, “Threshold models of collective behavior,” <i>American Journal of Sociology</i> 83(6), 1420–1443 (1978)."],title:'Mean-field threshold analysis',
+    stageLabel:'Plot of the cumulative threshold distribution F of r against the line F of r equals r, with the cobweb iteration',
+    hint:'Each step jumps from the curve to the diagonal: r(t+1) = F(r(t)).',
+    lead:'With random mixing, the next adopting fraction is the share of people whose threshold is below the current fraction. The cascade stops at the first fixed point where F(r) = r.',
+    formula:'<i>r</i>(<i>t</i>+1) = <i>F</i>(<i>r</i>(<i>t</i>)), &nbsp; <i>F</i>(<i>x</i>) = ∫<sub>0</sub><sup><i>x</i></sup> <i>p</i>(<i>x′</i>) <i>dx′</i><small>Granovetter (1978); fixed points solve F(r) = r</small>',
+    controls:[{type:'select',key:'dist',label:'Thresholds',options:[['normal','Normal distribution'],['ex','Slide example: F(r) = ¾r² + ¼']],value:'normal'},
+      {key:'mu',label:'Mean <i>μ</i>',min:0.05,max:0.6,step:0.01,value:0.25,fmt:v=>v.toFixed(2)},
+      {key:'sd',label:'Std. deviation <i>σ</i>',min:0.02,max:0.45,step:0.002,value:0.10,fmt:v=>v.toFixed(3)},speedCtl(4,20)],
+    buttons:[['play','Play','primary'],['step','Step'],['reset','Reset']],
+    readouts:[['r','Current r'],['t','Step'],['fix','Stable point reached']],
+    charts:[['pdf','Threshold distribution p(x)',120],['sweep','Final adopting fraction vs σ',150]],
+    note:'With μ = 0.25, the outcome jumps from a few percent to nearly everyone as σ crosses about 0.122, the same 12.2 out of 100 people in Granovetter’s riot example. Past that point the jump shrinks again as σ keeps growing.',
+    onInput:k=>{if(k!=='speed'){m.stop&&m.stop();computeSweep();m.reset();m.render();}},
+    onChange:k=>{if(k==='dist'){m.stop();toggle();computeSweep();m.reset();m.render();}}
+  });
+  let path,r,t,finished,sweep=[];
+  const F=x=>{if(ui.vals.dist==='ex')return 0.75*x*x+0.25;if(x>=1)return 1;return Phi((x-ui.vals.mu)/ui.vals.sd);};
+  const pdf=x=>ui.vals.dist==='ex'?1.5*x:Math.exp(-0.5*((x-ui.vals.mu)/ui.vals.sd)**2)/(ui.vals.sd*Math.sqrt(2*Math.PI));
+  function toggle(){const ex=ui.vals.dist==='ex';ui.ctl_mu.style.display=ex?'none':'';ui.ctl_sd.style.display=ex?'none':'';
+    ui.cap_sweep.textContent=ex?'Fixed points of the slide example':'Final adopting fraction vs σ';}
+  function settle(Ff){let x=0;for(let i=0;i<4000;i++){const y=Ff(x);if(Math.abs(y-x)<1e-9)return y;x=y;}return x;}
+  function computeSweep(){if(ui.vals.dist==='ex'){sweep=[];return;}const mu=ui.vals.mu;sweep=[];
+    for(let s=0.02;s<=0.4501;s+=0.0025){sweep.push([s,settle(x=>x>=1?1:Phi((x-mu)/s))]);}}
+  function fixedPoints(){const out=[];const n=2000;let prev=F(0)-0;
+    for(let i=1;i<=n;i++){const x=i/n,d=F(x)-x;if((prev>0&&d<=0)||(prev<0&&d>=0)||Math.abs(d)<1e-7&&i===n){
+        const xr=x-1/n*(Math.abs(d)/(Math.abs(d)+Math.abs(prev)||1));const h=1e-4;const dF=(F(Math.min(1,xr+h))-F(Math.max(0,xr-h)))/(2*h);
+        if(!out.some(o=>Math.abs(o.x-xr)<0.004))out.push({x:xr,stable:Math.abs(dF)<1});}prev=d;}
+    return out;}
+  const m={ui,
+    reset(){r=0;t=0;finished=false;path=[[0,0]];ui.status('');},
+    step(){const y=F(r);path.push([r,y]);path.push([y,y]);t++;if(Math.abs(y-r)<1e-4){finished=true;ui.status(`Stopped: F(r) = r at r ≈ ${y.toFixed(3)}.`);}r=y;},
+    done:()=>finished,
+    render(){
+      const c=ui.canvas;const {w,h}=fitCanvas(c);const side=Math.max(120,Math.min(w-70,h-48));
+      const o=chart(c,{xMax:1,yMax:1,xLabel:'r',yLabel:'F(r)',xTicks:5,yTicks:5,left:(w-side)/2+14,right:(w-side)/2-14});
+      const {ctx,X,Y}=o;
+      ctx.strokeStyle=TK.ink;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(X(0),Y(0));ctx.lineTo(X(1),Y(1));ctx.stroke();
+      ctx.strokeStyle=TK.i;ctx.lineWidth=2.4;ctx.beginPath();for(let i=0;i<=400;i++){const x=i/400;i?ctx.lineTo(X(x),Y(F(x))):ctx.moveTo(X(x),Y(F(x)));}ctx.stroke();
+      ctx.strokeStyle=TK.s;ctx.lineWidth=1.5;ctx.beginPath();path.forEach(([x,y],i)=>i?ctx.lineTo(X(x),Y(y)):ctx.moveTo(X(x),Y(y)));ctx.stroke();
+      for(const f of fixedPoints()){ctx.beginPath();ctx.arc(X(f.x),Y(f.x),7,0,6.3);ctx.lineWidth=2;ctx.strokeStyle=f.stable?TK.s:TK.i;
+        if(f.stable){ctx.fillStyle=TK.s;ctx.globalAlpha=.25;ctx.fill();ctx.globalAlpha=1;}ctx.stroke();
+        ctx.fillStyle=TK.ink;ctx.font='13px "Instrument Sans", system-ui, sans-serif';ctx.textAlign=f.x>0.8?'right':'left';ctx.textBaseline='middle';
+        ctx.fillText(`r = ${f.x.toFixed(3)} (${f.stable?'stable':'unstable'})`,X(f.x)+(f.x>0.8?-12:12),Y(f.x)+(f.x>0.8?14:-12));}
+      ctx.fillStyle=TK.muted;ctx.font='italic 14px "Source Serif 4", Georgia, serif';ctx.textAlign='left';ctx.fillText('F(r) = r',X(0.82),Y(0.74));
+      ui.out('r',r.toFixed(3));ui.out('t',t);ui.out('fix',finished?'yes':'not yet');
+      const xs=[...Array(201).keys()].map(i=>i/200);const ys=xs.map(pdf);const ym=Math.max(...ys)*1.1;
+      chart(ui.charts.pdf,{xMax:1,yMax:ym,yTicks:3,series:[{pts:xs.map((x,i)=>[x,ys[i]]),color:TK.ink}],yFmt:v=>v.toFixed(v<10?1:0)});
+      if(ui.vals.dist==='ex'){const ctx2=chart(ui.charts.sweep,{xMax:1,xLabel:'r',series:[{pts:[[0,0],[1,0]],color:TK.muted,width:1},{pts:xs.map(x=>[x,F(x)-x]),color:TK.i}],yMin:-0.3,yMax:0.3,yTicks:3});
+        const {ctx:cc,X:X2,Y:Y2}=ctx2;cc.fillStyle=TK.muted;cc.font='12px "Instrument Sans", sans-serif';cc.textAlign='left';
+        cc.fillText('F(r) − r = ¼(3r − 1)(r − 1): roots at r = ⅓ and r = 1',X2(0.03),Y2(0.24));}
+      else{const sx=ui.vals.sd;const cur=sweep.reduce((a,b)=>Math.abs(b[0]-sx)<Math.abs(a[0]-sx)?b:a,sweep[0]);
+        const o2=chart(ui.charts.sweep,{xMin:0.02,xMax:0.45,yMax:1,xLabel:'σ',series:[{pts:sweep,color:TK.ink,width:1.6}],yFmt:v=>v*100+'%'});
+        o2.ctx.fillStyle=TK.i;o2.ctx.beginPath();o2.ctx.arc(o2.X(cur[0]),o2.Y(cur[1]),4.5,0,6.3);o2.ctx.fill();}
+    }};
+  attachRunner(m);
+  m.init=()=>{toggle();computeSweep();m.reset();m.render();};
+  register('7.1','gra','Mean-field F(r)',m);
+})();
+
+/* =========================================================
+   7.1  Independent cascade
+   ========================================================= */
+(function(){
+  const N=220;
+  const ui=buildPanel({id:'ic',refs:["F. Menczer, S. Fortunato, and C. A. Davis, <i>A First Course in Network Science</i>, Cambridge University Press (2020), Ch. 7.", "J. Goldenberg, B. Libai, and E. Muller, “Talk of the network: A complex systems look at the underlying process of word-of-mouth,” <i>Marketing Letters</i> 12(3), 211–223 (2001).", "D. Kempe, J. Kleinberg, and É. Tardos, “Maximizing the spread of influence through a social network,” <i>Proc. 9th ACM SIGKDD</i>, 137–146 (2003).", "P. Erdős and A. Rényi, “On random graphs I,” <i>Publicationes Mathematicae Debrecen</i> 6, 290–297 (1959).", "A.-L. Barabási and R. Albert, “Emergence of scaling in random networks,” <i>Science</i> 286, 509–512 (1999)."],title:'Independent cascade model',
+    stageLabel:'Network showing an independent cascade, with attempted activations highlighted',
+    legend:[['--off','inactive'],['--i','active']],
+    hint:'Click nodes to choose the initial adopters. Red links succeeded this step, dashed links failed.',
+    lead:'Influence passes one pair at a time. A newly active node gets a single chance to convince each inactive neighbor, succeeding with probability p. Then it stays active but stops trying.',
+    formula:'newly active <i>u</i> → inactive neighbor <i>v</i>: &nbsp;success with probability <i>p</i><small>each link is tried at most once</small>',
+    controls:[netCtl('er'),kCtl(4),{key:'p',label:'Influence probability <i>p</i>',min:0.02,max:1,step:0.01,value:0.3,fmt:v=>v.toFixed(2)},speedCtl(3,15)],
+    buttons:[['play','Play','primary'],['step','Step'],['reset','Reset'],['batch','Run 300 cascades'],['net','New network']],
+    readouts:[['frac','Active'],['t','Step'],['front','Trying now']],
+    charts:[['ts','Active fraction over time',130],['hist','Final size over 300 runs with the same seeds',130]],
+    note:'Same seeds, same network, very different outcomes: the probabilistic character makes single cascades hard to predict. Around p ≈ 1/⟨k⟩ the histogram splits into small and large cascades.',
+    onChange:k=>{if(k==='net'||k==='k')newNet();else if(k==='p'){m.stop();m.reset();histo=null;m.render();}}
+  });
+  let g,act,front,tried,seeds=[],t,hist,histo=null,started=false;
+  const frac=()=>act.reduce((a,b)=>a+b,0)/N;
+  const m={ui,
+    reset(){act=new Uint8Array(N);if(!seeds.length)seeds=[ri(N)];for(const s of seeds)act[s]=1;front=[...seeds];tried=[];t=0;hist=[frac()];started=false;ui.status('');},
+    step(){started=true;tried=[];const nx=[];for(const u of front)for(const v of g.adj[u]){if(act[v])continue;const ok=Math.random()<ui.vals.p;tried.push([u,v,ok]);if(ok){act[v]=1;nx.push(v);}}
+      front=nx;t++;hist.push(frac());if(!front.length)ui.status(`Cascade finished at ${pct(frac())} after ${t} steps.`);},
+    done:()=>started&&!front.length,
+    render(){const fs=new Set(front);drawNet(ui.canvas,g,{color:i=>act[i]?TK.i:TK.off,ring:i=>fs.has(i),highlight:tried});
+      ui.out('frac',pct(frac()));ui.out('t',t);ui.out('front',front.length);
+      chart(ui.charts.ts,{xMax:Math.max(8,hist.length-1),series:[{ys:hist,color:TK.i}],yFmt:v=>v*100+'%'});
+      if(histo)chart(ui.charts.hist,{xMax:1,yMax:Math.max(...histo)*1.1,bars:[{ys:histo,color:TK.s}],xFmt:v=>v*100+'%',yTicks:3});
+      else chart(ui.charts.hist,{xMax:1,yMax:1,xFmt:v=>v*100+'%',yFmt:()=>'',empty:'Run 300 cascades to see the spread of outcomes'});}
+  };
+  function newNet(){m.stop&&m.stop();g=makeGraph(ui.vals.net,N,ui.vals.k);frLayout(g,260,0.12,true);seeds=[ri(N)];histo=null;m.reset();m.render();}
+  ui.btn.net.onclick=newNet;
+  ui.btn.batch.onclick=()=>{m.stop();const bins=new Array(20).fill(0);const p=ui.vals.p;let mean=0;
+    for(let r=0;r<300;r++){const a=new Uint8Array(N);let f=[...seeds];for(const s of f)a[s]=1;let c=f.length;
+      while(f.length){const nx=[];for(const u of f)for(const v of g.adj[u])if(!a[v]&&Math.random()<p){a[v]=1;nx.push(v);c++;}f=nx;}
+      bins[Math.min(19,Math.floor(c/N*20))]++;mean+=c/N/300;}
+    histo=bins;ui.status(`Mean final size over 300 runs: ${pct(mean)}.`);m.render();};
+  ui.canvas.addEventListener('click',e=>{const i=hitNode(ui.canvas,e);if(i<0)return;m.stop();
+    if(started){seeds=[];started=false;}
+    const k=seeds.indexOf(i);if(k>=0)seeds.splice(k,1);else seeds.push(i);if(!seeds.length)seeds=[i];histo=null;m.reset();m.render();});
+  attachRunner(m);m.init=newNet;
+  register('7.1','ic','Independent cascade',m);
+})();
+
+/* =========================================================
+   7.2  SI / SIS / SIR / SIRS on networks
+   ========================================================= */
+(function(){
+  const N=300;
+  const ui=buildPanel({id:'epi',refs:["F. Menczer, S. Fortunato, and C. A. Davis, <i>A First Course in Network Science</i>, Cambridge University Press (2020), Ch. 7.", "W. O. Kermack and A. G. McKendrick, “A contribution to the mathematical theory of epidemics,” <i>Proc. R. Soc. Lond. A</i> 115, 700–721 (1927).", "R. Pastor-Satorras and A. Vespignani, “Epidemic spreading in scale-free networks,” <i>Physical Review Letters</i> 86, 3200–3203 (2001).", "R. Pastor-Satorras, C. Castellano, P. Van Mieghem, and A. Vespignani, “Epidemic processes in complex networks,” <i>Reviews of Modern Physics</i> 87, 925–979 (2015).", "J. Stehlé et al., “High-resolution measurements of face-to-face contact patterns in a primary school,” <i>PLoS ONE</i> 6(8), e23176 (2011).", "K. Choi, H. Choi, and B. Kahng, “COVID-19 epidemic under the K-quarantine model: Network approach,” <i>Chaos, Solitons &amp; Fractals</i> 157, 111904 (2022).", "B. Wuyts and J. Sieber, “Mean-field models of dynamics on networks via moment closure: An automated procedure,” <i>Physical Review E</i> 106, 054312 (2022).", "P. Erdős and A. Rényi, “On random graphs I,” <i>Publicationes Mathematicae Debrecen</i> 6, 290–297 (1959).", "A.-L. Barabási and R. Albert, “Emergence of scaling in random networks,” <i>Science</i> 286, 509–512 (1999)."],title:'Epidemic spreading',
+    stageLabel:'Network of susceptible, infected and recovered nodes',
+    legend:[['--s','S susceptible'],['--i','I infected'],['--r','R recovered']],
+    hint:'Click a node to infect it. Node size follows degree, so hubs stand out.',
+    lead:'Each step, every susceptible node is infected by each infected neighbor with probability β, and infected nodes recover with probability μ. The dashed curves show the mean-field equations, which assume random mixing.',
+    controls:[{type:'select',key:'model',label:'Model',options:[['SI','SI'],['SIS','SIS'],['SIR','SIR'],['SIRS','SIRS']],value:'SIR'},
+      netCtl('er'),kCtl(4,10),
+      {key:'beta',label:'Infection <i>β</i>',min:0.01,max:0.8,step:0.01,value:0.15,fmt:v=>v.toFixed(2)},
+      {key:'mu',label:'Recovery <i>μ</i>',min:0.01,max:0.8,step:0.01,value:0.2,fmt:v=>v.toFixed(2)},
+      {key:'xi',label:'Immunity loss <i>ξ</i>',min:0.005,max:0.3,step:0.005,value:0.03,fmt:v=>v.toFixed(3)},
+      {key:'seeds',label:'Initially infected',min:1,max:20,step:1,value:3},speedCtl(8)],
+    buttons:[['play','Play','primary'],['step','Step'],['reset','Reset'],['hub','Infect the biggest hub'],['net','New network'],['sweep','Compare random vs scale-free']],
+    readouts:[['s','Susceptible'],['i','Infected'],['r','Recovered'],['t','Step'],['R0','R₀ = β⟨k⟩/μ'],['R0h','β⟨k²⟩/(μ⟨k⟩)']],
+    charts:[['ts','Fractions over time (solid: simulation, dashed: mean field)',160],['sw','SIR outbreak size vs R₀, random (blue) and scale-free (red)',160]],
+    note:'R₀ > 1 is the homogeneous epidemic threshold. On scale-free networks the hubs make ⟨k²⟩ large, so the outbreak starts well below R₀ = 1: in the limit of large networks there is no threshold at all.',
+    onChange:k=>{if(k==='net'||k==='k')newNet();else if(k!=='speed'){if(k==='model')show();m.stop();m.reset();m.render();}}
+  });
+  let g,st,t,H,MF,mf,finished,hubOnly=false,sweep=null;
+  const counts=()=>{let s=0,i=0,r=0;for(let x=0;x<N;x++){if(st[x]===0)s++;else if(st[x]===1)i++;else r++;}return [s/N,i/N,r/N];};
+  function show(){const md=ui.vals.model;ui.ctl_mu.style.display=md==='SI'?'none':'';ui.ctl_xi.style.display=md==='SIRS'?'':'none';
+    const f={SI:'<i>ds/dt</i> = −<i>β</i>⟨<i>k</i>⟩<i>si</i><br><i>di/dt</i> = <i>β</i>⟨<i>k</i>⟩<i>si</i>',
+      SIS:'<i>ds/dt</i> = −<i>β</i>⟨<i>k</i>⟩<i>si</i> + <i>μi</i><br><i>di/dt</i> = <i>β</i>⟨<i>k</i>⟩<i>si</i> − <i>μi</i>',
+      SIR:'<i>ds/dt</i> = −<i>β</i>⟨<i>k</i>⟩<i>si</i><br><i>di/dt</i> = <i>β</i>⟨<i>k</i>⟩<i>si</i> − <i>μi</i><br><i>dr/dt</i> = <i>μi</i>',
+      SIRS:'<i>ds/dt</i> = −<i>β</i>⟨<i>k</i>⟩<i>si</i> + <i>ξr</i><br><i>di/dt</i> = <i>β</i>⟨<i>k</i>⟩<i>si</i> − <i>μi</i><br><i>dr/dt</i> = <i>μi</i> − <i>ξr</i>'}[md];
+    ui.formula(f+'<small>mean-field equations, s + i + r = 1</small>');}
+  function mfStep(){const md=ui.vals.model,b=ui.vals.beta*g.k,mu=ui.vals.mu,xi=ui.vals.xi;let [s,i,r]=mf;
+    for(let k=0;k<20;k++){const dt=0.05;const inf=b*s*i;let ds=-inf,di=inf,dr=0;
+      if(md!=='SI'){const rec=mu*i;di-=rec;if(md==='SIS')ds+=rec;else dr+=rec;}
+      if(md==='SIRS'){ds+=xi*r;dr-=xi*r;}s+=ds*dt;i+=di*dt;r+=dr*dt;}mf=[s,i,r];}
+  const m={ui,
+    reset(){st=new Int8Array(N);const ids=hubOnly?[g.hub]:shuffle([...Array(N).keys()]).slice(0,ui.vals.seeds);for(const x of ids)st[x]=1;
+      t=0;finished=false;H=[counts()];mf=H[0].slice();MF=[mf.slice()];ui.status('');},
+    step(){const md=ui.vals.model,b=ui.vals.beta,mu=ui.vals.mu,xi=ui.vals.xi;const nx=st.slice();
+      for(let x=0;x<N;x++){const v=st[x];
+        if(v===0){for(const y of g.adj[x])if(st[y]===1&&Math.random()<b){nx[x]=1;break;}}
+        else if(v===1){if(md!=='SI'&&Math.random()<mu)nx[x]=md==='SIS'?0:2;}
+        else if(md==='SIRS'&&Math.random()<xi)nx[x]=0;}
+      st=nx;t++;const c=counts();H.push(c);mfStep();MF.push(mf.slice());
+      if(c[1]===0){finished=true;ui.status(md==='SIR'?`Outbreak over: ${pct(c[2])} were infected in total.`:'The infection died out.');}
+      else if(md==='SI'&&c[0]===0){finished=true;ui.status('Everyone reachable is infected.');}
+      else if(t>=1500){finished=true;ui.status('Stopped after 1500 steps.');}},
+    done:()=>finished,
+    render(){const col=[TK.s,TK.i,TK.r];drawNet(ui.canvas,g,{color:x=>col[st[x]],sizeByDegree:true});
+      const c=H[H.length-1];ui.out('s',pct(c[0]));ui.out('i',pct(c[1]));ui.out('r',pct(c[2]));ui.out('t',t);
+      const md=ui.vals.model;ui.out('R0',md==='SI'?'n/a':(ui.vals.beta*g.k/ui.vals.mu).toFixed(2));
+      ui.out('R0h',md==='SI'?'n/a':(ui.vals.beta*g.k2/(ui.vals.mu*g.k)).toFixed(2));
+      const xm=Math.max(40,H.length-1);const ser=[];const show3=md==='SIR'||md==='SIRS';
+      for(let k=0;k<(show3?3:2);k++){ser.push({ys:H.map(h=>h[k]),color:col[k]});ser.push({ys:MF.map(h=>h[k]),color:col[k],dash:[5,4],width:1.3});}
+      chart(ui.charts.ts,{xMax:xm,series:ser,yFmt:v=>v*100+'%'});
+      if(sweep&&sweep.er.length)chart(ui.charts.sw,{xMax:4,yMax:1,xLabel:'β⟨k⟩/μ',vlines:[{x:1}],series:[{pts:sweep.er,color:TK.s,dots:true},{pts:sweep.ba,color:TK.i,dots:true}],yFmt:v=>v*100+'%'});
+      else chart(ui.charts.sw,{xMax:4,yMax:1,xLabel:'β⟨k⟩/μ',vlines:[{x:1}],yFmt:v=>v*100+'%',empty:'Press “Compare random vs scale-free”'});}
+  };
+  function newNet(){m.stop&&m.stop();g=makeGraph(ui.vals.net,N,ui.vals.k);frLayout(g,260,0.12,true);hubOnly=false;m.reset();m.render();}
+  ui.btn.net.onclick=newNet;
+  ui.btn.hub.onclick=()=>{m.stop();hubOnly=true;m.reset();hubOnly=false;ui.status(`Seeded the hub with ${g.kmax} contacts.`);m.render();};
+  ui.btn.sweep.onclick=()=>{m.stop();const NS=800,k=ui.vals.k,mu=ui.vals.mu;const ger=makeGraph('er',NS,k),gba=makeGraph('ba',NS,k);
+    sweep={er:[],ba:[]};const pts=[...Array(17).keys()].map(i=>i*0.25);let idx=0;ui.btn.sweep.disabled=true;
+    const run=(G,beta)=>{let s=new Int8Array(NS);for(const x of shuffle([...Array(NS).keys()]).slice(0,4))s[x]=1;let any=true,guard=0;
+      while(any&&guard++<2000){any=false;const nx=s.slice();for(let x=0;x<NS;x++){if(s[x]===0){for(const y of G.adj[x])if(s[y]===1&&Math.random()<beta){nx[x]=1;break;}}
+        else if(s[x]===1){any=true;if(Math.random()<mu)nx[x]=2;}}s=nx;}let r=0;for(let x=0;x<NS;x++)if(s[x]!==0)r++;return r/NS;};
+    const tick=()=>{if(idx>=pts.length){ui.btn.sweep.disabled=false;ui.status(`Sweep done (N = ${NS}, ⟨k⟩ = ${k}, μ = ${mu}). Scale-free ⟨k²⟩/⟨k⟩ = ${(gba.k2/gba.k).toFixed(1)} vs random ${(ger.k2/ger.k).toFixed(1)}.`);return;}
+      const R=pts[idx];const b=Math.min(1,R*mu/k);let a=0,c=0;for(let r=0;r<8;r++){a+=run(ger,b)/8;c+=run(gba,b)/8;}
+      sweep.er.push([R,a]);sweep.ba.push([R,c]);idx++;ui.status(`Sweeping… ${idx}/${pts.length}`);m.render();setTimeout(tick,0);};
+    tick();};
+  ui.canvas.addEventListener('click',e=>{const x=hitNode(ui.canvas,e);if(x<0)return;st[x]=1;finished=false;m.render();});
+  attachRunner(m);m.init=()=>{show();newNet();};
+  register('7.2','epi','SI · SIS · SIR · SIRS',m);
+})();
+
+/* =========================================================
+   7.2  Rumor spreading
+   ========================================================= */
+(function(){
+  const N=260;
+  const ui=buildPanel({id:'rum',refs:["F. Menczer, S. Fortunato, and C. A. Davis, <i>A First Course in Network Science</i>, Cambridge University Press (2020), Ch. 7.", "D. J. Daley and D. G. Kendall, “Epidemics and rumours,” <i>Nature</i> 204, 1118 (1964).", "D. P. Maki and M. Thompson, <i>Mathematical Models and Applications</i>, Prentice-Hall (1973).", "Y. Moreno, M. Nekovee, and A. F. Pacheco, “Dynamics of rumor spreading in complex networks,” <i>Physical Review E</i> 69, 066130 (2004).", "P. Erdős and A. Rényi, “On random graphs I,” <i>Publicationes Mathematicae Debrecen</i> 6, 290–297 (1959).", "A.-L. Barabási and R. Albert, “Emergence of scaling in random networks,” <i>Science</i> 286, 509–512 (1999)."],title:'Rumor spreading',
+    stageLabel:'Network of ignorants, spreaders and stiflers',
+    legend:[['--s','S ignorant'],['--i','I spreader'],['--r','R stifler']],
+    hint:'Click a node to make it a spreader.',
+    lead:'Spreaders tell the rumor to ignorant neighbors, but lose interest when they meet people who already know it. Unlike an epidemic, the rumor stops itself before reaching everyone.',
+    formula:'I + S → I + I &nbsp;(<i>β</i>)<br>I + R → R + R &nbsp;(<i>α</i>)<br>I + I → R + R &nbsp;(<i>α</i>)<small>asynchronous updates in random order</small>',
+    controls:[netCtl('er'),kCtl(8,20),
+      {key:'beta',label:'Transmission <i>β</i>',min:0.05,max:1,step:0.01,value:0.6,fmt:v=>v.toFixed(2)},
+      {key:'alpha',label:'Stop <i>α</i>',min:0.05,max:1,step:0.01,value:0.3,fmt:v=>v.toFixed(2)},speedCtl(6)],
+    buttons:[['play','Play','primary'],['step','Step'],['reset','Reset'],['net','New network']],
+    readouts:[['s','Never heard'],['i','Spreaders'],['r','Stiflers'],['t','Step']],
+    charts:[['ts','Fractions over time',150]],
+    note:'Watch the ignorant fraction level off above zero. In a well-mixed population with β = α = 1, about 20% never hear the rumor.',
+    onChange:k=>{if(k==='net'||k==='k')newNet();else if(k!=='speed'){m.stop();m.reset();m.render();}}
+  });
+  let g,st,t,H,finished;
+  const counts=()=>{const c=[0,0,0];for(let x=0;x<N;x++)c[st[x]]++;return c.map(v=>v/N);};
+  const order=[...Array(N).keys()];
+  const m={ui,
+    reset(){st=new Int8Array(N);st[ri(N)]=1;t=0;finished=false;H=[counts()];ui.status('');},
+    step(){const b=ui.vals.beta,a=ui.vals.alpha;shuffle(order);
+      for(const x of order){if(st[x]===0){for(const y of g.adj[x])if(st[y]===1&&Math.random()<b){st[x]=1;break;}}
+        else if(st[x]===1){for(const y of g.adj[x]){if(st[y]===2&&Math.random()<a){st[x]=2;break;}if(st[y]===1&&Math.random()<a){st[x]=2;st[y]=2;break;}}}}
+      t++;const c=counts();H.push(c);if(c[1]===0){finished=true;ui.status(`Rumor died out. ${pct(c[0])} never heard it.`);}},
+    done:()=>finished,
+    render(){const col=[TK.s,TK.i,TK.r];drawNet(ui.canvas,g,{color:x=>col[st[x]]});const c=H[H.length-1];
+      ui.out('s',pct(c[0]));ui.out('i',pct(c[1]));ui.out('r',pct(c[2]));ui.out('t',t);
+      chart(ui.charts.ts,{xMax:Math.max(20,H.length-1),series:[0,1,2].map(k=>({ys:H.map(h=>h[k]),color:col[k]})),yFmt:v=>v*100+'%'});}
+  };
+  function newNet(){m.stop&&m.stop();g=makeGraph(ui.vals.net,N,ui.vals.k);frLayout(g,260,0.12,true);m.reset();m.render();}
+  ui.btn.net.onclick=newNet;
+  ui.canvas.addEventListener('click',e=>{const x=hitNode(ui.canvas,e);if(x<0)return;st[x]=1;finished=false;m.render();});
+  attachRunner(m);m.init=newNet;
+  register('7.2','rum','Rumor',m);
+})();
+
+/* =========================================================
+   7.3  Majority vs voter on a 2D grid
+   ========================================================= */
+(function(){
+  const L=60,N=L*L;
+  const ui=buildPanel({id:'vot',refs:["F. Menczer, S. Fortunato, and C. A. Davis, <i>A First Course in Network Science</i>, Cambridge University Press (2020), Ch. 7.", "P. Clifford and A. Sudbury, “A model for spatial conflict,” <i>Biometrika</i> 60(3), 581–588 (1973).", "R. A. Holley and T. M. Liggett, “Ergodic theorems for weakly interacting infinite systems and the voter model,” <i>Annals of Probability</i> 3(4), 643–663 (1975).", "P. L. Krapivsky and S. Redner, “Dynamics of majority rule in two-state interacting spin systems,” <i>Physical Review Letters</i> 90, 238701 (2003).", "M. Mobilia, “Does a single zealot affect an infinite group of voters?” <i>Physical Review Letters</i> 91, 028701 (2003).", "C. Castellano, S. Fortunato, and V. Loreto, “Statistical physics of social dynamics,” <i>Reviews of Modern Physics</i> 81, 591–646 (2009)."],title:'Majority and voter models',
+    stageLabel:'Square grid of red and blue opinions',
+    legend:[['--s','opinion 0'],['--i','opinion 1']],
+    hint:'Periodic 60 × 60 grid; each cell looks at its 8 surrounding cells. Dots mark zealots.',
+    lead:'Two discrete rules for the same grid. Under majority, a node adopts the opinion held by most of its neighborhood. Under the voter model it simply copies one randomly chosen neighbor.',
+    formula:'majority: &nbsp;<i>o<sub>i</sub></i> ← majority of {<i>i</i>} ∪ <i>N</i>(<i>i</i>)<br>voter: &nbsp;<i>o<sub>i</sub></i> ← <i>o<sub>j</sub></i>, &nbsp;<i>j</i> random in <i>N</i>(<i>i</i>)<small>one sweep = L² random node updates</small>',
+    controls:[{type:'select',key:'rule',label:'Rule',options:[['maj','Majority'],['vot','Voter']],value:'vot'},
+      {key:'f',label:'Initial share of opinion 1',min:0.05,max:0.95,step:0.01,value:0.5,fmt:v=>pct(v)},
+      {key:'z',label:'Zealots (always 0)',min:0,max:0.05,step:0.002,value:0,fmt:v=>(v*100).toFixed(1)+'%'},
+      {key:'nu',label:'Spontaneous change',min:0,max:0.02,step:0.001,value:0,fmt:v=>v.toFixed(3)},speedCtl(15,60)],
+    buttons:[['play','Play','primary'],['step','Step'],['reset','Reset'],['exit','Measure exit probability']],
+    readouts:[['f','Opinion 1'],['rho','Disagreeing links'],['t','Sweeps']],
+    charts:[['ts','Share of opinion 1 over sweeps',130],['exit','Exit probability: chance opinion 1 wins',160]],
+    note:'Majority dynamics freeze into stable clusters and almost always end with the initial majority on top (a step function). The voter model coarsens slowly; opinion 1 wins with probability equal to its initial share (the diagonal).',
+    onChange:k=>{if(k!=='speed'){m.stop();m.reset();m.render();}}
+  });
+  let o,z,t,H,finished,exitData=null;
+  const nb=new Int32Array(N*8);for(let y=0;y<L;y++)for(let x=0;x<L;x++){let k=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;nb[(y*L+x)*8+k++]=((y+dy+L)%L)*L+((x+dx+L)%L);}}
+  function sweepGrid(O,Z,n,rule,nu,nbr){let ch=0;for(let s=0;s<n;s++){const i=ri(n);if(Z&&Z[i])continue;let v;
+      if(nu&&Math.random()<nu)v=ri(2);else if(rule==='vot')v=O[nbr[i*8+ri(8)]];else{let c=O[i];for(let k=0;k<8;k++)c+=O[nbr[i*8+k]];v=c>=5?1:0;}
+      if(v!==O[i]){O[i]=v;ch++;}}return ch;}
+  const share=()=>o.reduce((a,b)=>a+b,0)/N;
+  const rho=()=>{let d=0;for(let i=0;i<N;i++){if(o[i]!==o[nb[i*8+4]])d++;if(o[i]!==o[nb[i*8+6]])d++;}return d/(2*N);};
+  const m={ui,
+    reset(){o=new Uint8Array(N);z=new Uint8Array(N);for(let i=0;i<N;i++){o[i]=Math.random()<ui.vals.f?1:0;if(Math.random()<ui.vals.z){z[i]=1;o[i]=0;}}
+      t=0;finished=false;H=[share()];ui.status('');},
+    step(){const ch=sweepGrid(o,ui.vals.z?z:null,N,ui.vals.rule,ui.vals.nu,nb);t++;const s=share();H.push(s);
+      if((s===0||s===1)&&!ui.vals.nu){finished=true;ui.status(`Consensus on opinion ${s} after ${t} sweeps.`);}
+      else if(ch===0&&!ui.vals.nu){finished=true;ui.status('Frozen: no cell wants to change.');}
+      else if(t>=5000){finished=true;ui.status('Stopped after 5000 sweeps.');}},
+    done:()=>finished,
+    render(){const {ctx,w,h}=fitCanvas(ui.canvas);ctx.clearRect(0,0,w,h);const s=Math.floor(Math.min(w-24,h-40)/L);const ox=(w-s*L)/2,oy=(h-30-s*L)/2+4;
+      const c0=TK.s,c1=TK.i;for(let y=0;y<L;y++)for(let x=0;x<L;x++){const i=y*L+x;ctx.fillStyle=o[i]?c1:c0;ctx.fillRect(ox+x*s,oy+y*s,s,s);}
+      if(ui.vals.z){ctx.fillStyle=TK.panel;for(let i=0;i<N;i++)if(z[i]){ctx.beginPath();ctx.arc(ox+(i%L+.5)*s,oy+(Math.floor(i/L)+.5)*s,Math.max(1.5,s*.22),0,6.3);ctx.fill();}}
+      ui.out('f',pct(share()));ui.out('rho',pct(rho()));ui.out('t',t);
+      chart(ui.charts.ts,{xMax:Math.max(30,H.length-1),series:[{ys:H,color:TK.i}],yFmt:v=>v*100+'%'});
+      const diag={pts:[[0,0],[1,1]],color:TK['rule-strong'],dash:[4,4],width:1};
+      if(exitData&&exitData.maj.length)chart(ui.charts.exit,{xMax:1,yMax:1,xLabel:'initial share of opinion 1',series:[diag,{pts:exitData.maj,color:TK.ink,dots:true},{pts:exitData.vot,color:TK.i,dots:true}],xFmt:v=>v*100+'%',yFmt:v=>v*100+'%'});
+      else chart(ui.charts.exit,{xMax:1,yMax:1,xLabel:'initial share of opinion 1',series:[diag],xFmt:v=>v*100+'%',yFmt:v=>v*100+'%',empty:'Press “Measure exit probability”'});}
+  };
+  ui.btn.exit.onclick=()=>{m.stop();const l=10,n=l*l;const nb2=new Int32Array(n*8);
+    for(let y=0;y<l;y++)for(let x=0;x<l;x++){let k=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;nb2[(y*l+x)*8+k++]=((y+dy+l)%l)*l+((x+dx+l)%l);}}
+    exitData={maj:[],vot:[]};const fs=[0.1,0.2,0.3,0.4,0.45,0.5,0.55,0.6,0.7,0.8,0.9];let idx=0;ui.btn.exit.disabled=true;
+    const once=(f,rule)=>{const O=new Uint8Array(n);const ids=shuffle([...Array(n).keys()]);const ones=Math.round(f*n);for(let i=0;i<ones;i++)O[ids[i]]=1;
+      for(let s=0;s<3000;s++){const ch=sweepGrid(O,null,n,rule,0,nb2);const sum=O.reduce((a,b)=>a+b,0);if(sum===0||sum===n||(rule==='maj'&&ch===0))break;}
+      const sum=O.reduce((a,b)=>a+b,0);return sum>n/2?1:sum<n/2?0:0.5;};
+    const tick=()=>{if(idx>=fs.length){ui.btn.exit.disabled=false;ui.status('Exit probability measured on a 10 × 10 grid, 32 runs per point.');return;}
+      const f=fs[idx];let a=0,b=0;for(let r=0;r<32;r++){a+=once(f,"maj")/32;b+=once(f,"vot")/32;}exitData.maj.push([f,a]);exitData.vot.push([f,b]);idx++;
+      ui.status(`Measuring… ${idx}/${fs.length} (black: majority, red: voter)`);m.render();setTimeout(tick,0);};tick();};
+  m.maxPerFrame=20;
+  attachRunner(m);m.init=()=>{m.reset();m.render();};
+  register('7.3','vot','Majority vs voter',m);
+})();
+
+/* =========================================================
+   7.3  Bounded-confidence model (continuous opinions)
+   ========================================================= */
+(function(){
+  const N=200,TMAX=160;
+  const ui=buildPanel({id:'bc',refs:["F. Menczer, S. Fortunato, and C. A. Davis, <i>A First Course in Network Science</i>, Cambridge University Press (2020), Ch. 7.", "G. Deffuant, D. Neau, F. Amblard, and G. Weisbuch, “Mixing beliefs among interacting agents,” <i>Advances in Complex Systems</i> 3, 87–98 (2000).", "R. Hegselmann and U. Krause, “Opinion dynamics and bounded confidence: Models, analysis and simulation,” <i>Journal of Artificial Societies and Social Simulation</i> 5(3) (2002).", "C. Castellano, S. Fortunato, and V. Loreto, “Statistical physics of social dynamics,” <i>Reviews of Modern Physics</i> 81, 591–646 (2009)."],title:'Bounded-confidence model',
+    stageLabel:'Opinion trajectories of every node over iterations',
+    hint:'Each line is one person’s opinion over time, colored by where they started.',
+    lead:'Opinions are numbers between 0 and 1. Two neighbors only talk if their opinions are closer than the confidence bound ε, and then each moves part of the way toward the other.',
+    formula:'if |<i>o<sub>i</sub></i> − <i>o<sub>j</sub></i>| &lt; <i>ε</i>: <br><i>o<sub>i</sub></i> ← <i>o<sub>i</sub></i> + <i>μ</i>(<i>o<sub>j</sub></i> − <i>o<sub>i</sub></i>), &nbsp;<i>o<sub>j</sub></i> ← <i>o<sub>j</sub></i> + <i>μ</i>(<i>o<sub>i</sub></i> − <i>o<sub>j</sub></i>)<small>the mean opinion is conserved at every update</small>',
+    controls:[{type:'select',key:'net',label:'Who can meet',options:[['mix','Anyone (well mixed)'],['er','Network neighbors (random, ⟨k⟩ = 6)']],value:'mix'},
+      {key:'eps',label:'Confidence bound <i>ε</i>',min:0.03,max:0.6,step:0.01,value:0.15,fmt:v=>v.toFixed(2)},
+      {key:'mu',label:'Convergence <i>μ</i>',min:0.05,max:0.5,step:0.01,value:0.3,fmt:v=>v.toFixed(2)},speedCtl(12,40)],
+    buttons:[['play','Play','primary'],['step','Step'],['reset','Reset']],
+    readouts:[['cl','Opinion clusters'],['mean','Mean opinion'],['t','Iteration']],
+    charts:[['hist','Current distribution of opinions',130]],
+    note:'Small ε gives several surviving opinion groups, roughly 1/(2ε) of them; once ε is above about 0.25 everyone meets at the average, 1/2.',
+    onChange:k=>{if(k!=='speed'){m.stop();if(k==='net')g=makeGraph('er',N,6);m.reset();m.render();}}
+  });
+  let o,o0,H,t,finished,g=makeGraph('er',N,6);const order=[...Array(N).keys()];
+  const clusters=()=>{const s=Array.from(o).sort((a,b)=>a-b);let c=1;for(let i=1;i<N;i++)if(s[i]-s[i-1]>0.02)c++;return c;};
+  const m={ui,
+    reset(){o=new Float64Array(N);for(let i=0;i<N;i++)o[i]=Math.random();o0=o.slice();H=[Float32Array.from(o)];t=0;finished=false;ui.status('');},
+    step(){const e=ui.vals.eps,mu=ui.vals.mu,mix=ui.vals.net==='mix';shuffle(order);let mx=0;
+      for(const i of order){let j;if(mix){j=ri(N-1);if(j>=i)j++;}else{const a=g.adj[i];if(!a.length)continue;j=a[ri(a.length)];}
+        const d=o[j]-o[i];if(Math.abs(d)<e){o[i]+=mu*d;o[j]-=mu*d;mx=Math.max(mx,Math.abs(mu*d));}}
+      t++;H.push(Float32Array.from(o));if(mx<1e-4||t>=TMAX){finished=true;ui.status(`Settled into ${clusters()} opinion cluster${clusters()>1?'s':''}.`);}},
+    done:()=>finished,
+    render(){const c=ui.canvas;const o2=chart(c,{xMax:Math.max(40,H.length-1),yMax:1,xLabel:'iteration',yLabel:'opinion',yTicks:5});
+      const {ctx,X,Y}=o2;ctx.lineWidth=1;ctx.globalAlpha=0.45;
+      for(let i=0;i<N;i++){ctx.strokeStyle=ramp(o0[i]);ctx.beginPath();for(let k=0;k<H.length;k++){k?ctx.lineTo(X(k),Y(H[k][i])):ctx.moveTo(X(k),Y(H[k][i]));}ctx.stroke();}
+      ctx.globalAlpha=1;
+      const bins=new Array(40).fill(0);for(let i=0;i<N;i++)bins[Math.min(39,Math.floor(o[i]*40))]++;
+      chart(ui.charts.hist,{xMax:1,yMax:Math.max(10,Math.max(...bins)*1.1),bars:[{ys:bins,color:TK.ink}],yTicks:3});
+      ui.out('cl',clusters());ui.out('mean',(o.reduce((a,b)=>a+b,0)/N).toFixed(3));ui.out('t',t);}
+  };
+  attachRunner(m);m.init=()=>{m.reset();m.render();};
+  register('7.3','bc','Bounded confidence',m);
+})();
+
+/* =========================================================
+   7.3  Coevolution of network and opinions (Holme–Newman)
+   ========================================================= */
+(function(){
+  const N=120,K=4;
+  const ui=buildPanel({id:'co',refs:["F. Menczer, S. Fortunato, and C. A. Davis, <i>A First Course in Network Science</i>, Cambridge University Press (2020), Ch. 7.", "P. Holme and M. E. J. Newman, “Nonequilibrium phase transition in the coevolution of networks and opinions,” <i>Physical Review E</i> 74, 056108 (2006).", "T. M. J. Fruchterman and E. M. Reingold, “Graph drawing by force-directed placement,” <i>Software: Practice and Experience</i> 21(11), 1129–1164 (1991)."],title:'Coevolving network and opinions',
+    stageLabel:'Network whose links rewire while opinions change, colored by opinion',
+    hint:'Dashed links join people who disagree. The layout keeps adjusting as links rewire.',
+    lead:'Pick a node and one of its neighbors. With probability p the node drops that link and connects to someone who shares its opinion. Otherwise it adopts the neighbor’s opinion.',
+    formula:'with prob. <i>p</i>: rewire (<i>i</i>,<i>j</i>) → (<i>i</i>,<i>l</i>), <i>g<sub>l</sub></i> = <i>g<sub>i</sub></i><br>with prob. 1 − <i>p</i>: <i>g<sub>i</sub></i> ← <i>g<sub>j</sub></i><small>Holme &amp; Newman (2006), N = 120, ⟨k⟩ = 4</small>',
+    controls:[{key:'p',label:'Rewiring <i>p</i>',min:0,max:1,step:0.01,value:0.5,fmt:v=>v.toFixed(2)},
+      {key:'G',label:'Number of opinions',min:2,max:24,step:1,value:12},speedCtl(6,30)],
+    buttons:[['play','Play','primary'],['step','Step'],['reset','Reset']],
+    readouts:[['dis','Disagreeing links'],['op','Opinions left'],['comp','Communities'],['big','Largest community'],['t','Sweeps']],
+    charts:[['ts','Share of disagreeing links',130]],
+    note:'Large p: the network splits into many small like-minded groups that keep their original opinions. Small p: opinions converge first and a giant like-minded community forms. The paper finds the transition near p ≈ 0.46 for these settings.',
+    onChange:k=>{if(k==='G'){m.stop();m.reset();m.render();}}
+  });
+  let g,op,t,H,finished,cols=[];
+  const discord=()=>{let d=0,e=0;for(let a=0;a<N;a++)for(const b of g.adj[a])if(b>a){e++;if(op[a]!==op[b])d++;}return e?d/e:0;};
+  const m={ui,
+    reset(){g=makeGraph('er',N,K);frLayout(g,200,0.12,true);const G=ui.vals.G;op=new Int32Array(N);for(let i=0;i<N;i++)op[i]=ri(G);
+      cols=[...Array(G).keys()].map(k=>`hsl(${Math.round(k*360/G+12)},${55+(k%2)*12}%,${50+(k%3)*6}%)`);t=0;finished=false;H=[discord()];ui.status('');},
+    step(){const p=ui.vals.p;for(let s=0;s<N;s++){const i=ri(N);const a=g.adj[i];if(!a.length)continue;const j=a[ri(a.length)];
+        if(Math.random()<p){const cand=[];for(let l=0;l<N;l++)if(l!==i&&op[l]===op[i]&&!a.includes(l))cand.push(l);if(!cand.length)continue;const l=cand[ri(cand.length)];
+          a.splice(a.indexOf(j),1);const aj=g.adj[j];aj.splice(aj.indexOf(i),1);a.push(l);g.adj[l].push(i);}
+        else op[i]=op[j];}
+      t++;const d=discord();H.push(d);if(d===0){finished=true;const c=components(g);ui.status(`Converged: every link joins people who agree. ${c.n} communities, largest ${c.big} nodes.`);}
+      else if(t>=4000){finished=true;ui.status('Stopped after 4000 sweeps.');}},
+    done:()=>finished,
+    render(){frLayout(g,2,0.006,false);
+      drawNet(ui.canvas,g,{color:i=>cols[op[i]],edgeColor:(a,b)=>op[a]===op[b]?{c:cols[op[a]],w:1.1,a:.7}:{c:TK.muted,w:0.8,a:.6,dash:[3,3]}});
+      const c=components(g);ui.out('dis',pct(H[H.length-1]));ui.out('op',new Set(op).size);ui.out('comp',c.n);ui.out('big',c.big);ui.out('t',t);
+      chart(ui.charts.ts,{xMax:Math.max(30,H.length-1),series:[{ys:H,color:TK.ink}],yFmt:v=>v*100+'%'});}
+  };
+  attachRunner(m);
+  m.init=()=>{m.reset();m.render();};
+  m.idle=()=>{if(!m.isPlaying())m.render();};
+  register('7.3','co','Coevolution',m);
+})();
+
+/* ---------- tabs ---------- */
+const nav=$('#tabs');let current=null;const inited=new Set();
+for(const gr of groups){const d=el(`<div class="group"><span class="sec">${gr.sec} ${gr.name}</span></div>`);
+  for(const tb of gr.tabs){const b=el(`<button class="tab" role="tab" id="tab-${tb.id}" aria-controls="p-${tb.id}" aria-selected="false">${tb.label}</button>`);b.onclick=()=>select(tb.id);d.append(b);}
+  nav.append(d);}
+function select(id){if(current&&models[current].stop)models[current].stop();
+  document.querySelectorAll('.panel').forEach(p=>p.hidden=p.id!=='p-'+id);
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',b.id==='tab-'+id));
+  current=id;try{history.replaceState(null,'','#'+id);}catch(e){}
+  requestAnimationFrame(()=>{if(!inited.has(id)){inited.add(id);models[id].init();}else models[id].render();});}
+const start=(location.hash||'').slice(1);select(models[start]?start:'thr');
+
+new ResizeObserver(()=>{if(current&&inited.has(current))models[current].render();}).observe($('#panels'));
+const mq=matchMedia('(prefers-color-scheme: dark)');(mq.addEventListener?mq.addEventListener('change',()=>{readTokens();models[current].render();}):null);
+document.fonts&&document.fonts.ready.then(()=>{if(current&&inited.has(current))models[current].render();});
+</script>
+</body>
+</html>
