@@ -21,7 +21,7 @@ Each model has its own address, so you can link straight to one from slides or a
 | 7.2 Epidemics | SI, SIS, SIR, and SIRS on networks | `#epi` |
 | 7.2 Epidemics | Rumor spreading (ignorant, spreader, stifler) | `#rum` |
 | 7.3 Opinions | Majority vs voter model on networks | `#vot` |
-| 7.3 Opinions | Bounded-confidence model | `#bc` |
+| 7.3 Opinions | Bounded-confidence model on networks | `#bc` |
 | 7.3 Opinions | Coevolution of networks and opinions | `#co` |
 
 ## What each model shows
@@ -38,7 +38,7 @@ Each model has its own address, so you can link straight to one from slides or a
 
 **Majority vs voter.** Both rules on random, scale-free, or 2D lattice networks, with optional zealots and spontaneous opinion changes. Links between nodes that disagree are drawn dashed. An exit-probability experiment on the chosen network type shows the step function for majority dynamics and the diagonal for the voter model.
 
-**Bounded confidence.** Continuous opinions in [0, 1] that interact only within the confidence bound ε. The trajectory plot shows clusters forming while the mean opinion stays constant.
+**Bounded confidence.** Continuous opinions in [0, 1] on random, scale-free, 2D lattice, or complete-graph networks; neighbors interact only within the confidence bound ε. The network view marks which links can still talk, and the trajectory plot below it shows opinion groups forming while the mean opinion stays constant.
 
 **Coevolution.** The Holme–Newman model, where links rewire toward like-minded nodes with probability p and opinions are copied otherwise. The live layout shows the network splitting into communities.
 

@@ -642,7 +642,7 @@ const kCtl=(v=4,max=12)=>({key:'k',label:'Mean degree <i>⟨k⟩</i>',min:2,max,
       {key:'eps',label:'Confidence bound <i>ε</i>',min:0.03,max:0.6,step:0.01,value:0.2,fmt:v=>v.toFixed(2)},
       {key:'mu',label:'Convergence <i>μ</i>',min:0.05,max:0.5,step:0.01,value:0.3,fmt:v=>v.toFixed(2)},speedCtl(12,40)],
     buttons:[['play','Play','primary'],['step','Step'],['reset','Reset'],['net','New network']],
-    readouts:[['cl','Opinion clusters'],['talk','Links that can talk'],['mean','Mean opinion'],['t','Iteration']],
+    readouts:[['cl','Opinion groups (3+ nodes)'],['talk','Links that can talk'],['mean','Mean opinion'],['t','Iteration']],
     charts:[['hist','Current distribution of opinions',130]],
     note:'On the complete graph, roughly 1/(2ε) opinion groups survive and ε above about 0.25 brings everyone to 1/2. Sparse networks are different: a node can only reach agreement through its own neighbors, so more small groups survive, and the same opinion can settle at slightly different values in different parts of the network. Compare the lattice with the random network at the same ε.',
     onChange:k=>{if(k==='net'||k==='k')newNet();else if(k!=='speed'){m.stop();m.reset();m.render();}}
@@ -651,7 +651,7 @@ const kCtl=(v=4,max=12)=>({key:'k',label:'Mean degree <i>⟨k⟩</i>',min:2,max,
   ui.canvas.after(traj);
   let g,o,o0,H,t,finished;const order=[...Array(N).keys()];
   const mixMode=()=>ui.vals.net==='mix';
-  const clusters=()=>{const s=Array.from(o).sort((a,b)=>a-b);let c=1;for(let i=1;i<s.length;i++)if(s[i]-s[i-1]>0.02)c++;return c;};
+  const clusters=()=>{const s=Array.from(o).sort((a,b)=>a-b);let c=0,run=1;for(let i=1;i<=s.length;i++){if(i<s.length&&s[i]-s[i-1]<=0.02)run++;else{if(run>=3)c++;run=1;}}return c;};
   function talkFrac(){if(mixMode())return null;let a=0,e=0;const eps=ui.vals.eps;for(let i=0;i<g.N;i++)for(const j of g.adj[i])if(j>i){e++;if(Math.abs(o[i]-o[j])<eps)a++;}return e?a/e:0;}
   function newNet(){m.stop&&m.stop();const type=ui.vals.net;
     if(type==='lat')g=makeLattice(14);
@@ -665,7 +665,7 @@ const kCtl=(v=4,max=12)=>({key:'k',label:'Mean degree <i>⟨k⟩</i>',min:2,max,
       for(const i of ord){let j;if(mix){j=ri(n-1);if(j>=i)j++;}else{const a=g.adj[i];if(!a.length)continue;j=a[ri(a.length)];}
         const d=o[j]-o[i];if(Math.abs(d)<e){o[i]+=mu*d;o[j]-=mu*d;mx=Math.max(mx,Math.abs(mu*d));}}
       t++;H.push(Float32Array.from(o));
-      if(mx<1e-4||t>=TMAX){finished=true;const c=clusters();ui.status(t>=TMAX?`Stopped after ${TMAX} iterations with ${c} opinion clusters.`:`Settled into ${c} opinion cluster${c>1?'s':''}.`);}},
+      if(mx<1e-4||t>=TMAX){finished=true;const c=clusters();ui.status(t>=TMAX?`Stopped after ${TMAX} iterations with ${c} opinion groups.`:`Settled into ${c} opinion group${c>1?'s':''} of 3 or more nodes.`);}},
     done:()=>finished,
     render(){const eps=ui.vals.eps,mix=mixMode();
       drawNet(ui.canvas,g,{color:i=>ramp(o[i]),sizeByDegree:g.type==='ba',
