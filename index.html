@@ -46,6 +46,8 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .panel[hidden]{display:none}
 .stage{background:var(--panel);border:1px solid var(--rule);border-radius:10px;position:relative;min-width:0}
 .stage canvas.main{display:block;width:100%;height:min(74vh,760px);min-height:320px;touch-action:manipulation}
+#p-bc canvas.main{height:min(44vh,440px);min-height:260px}
+.stage canvas.traj{display:block;width:100%;height:min(32vh,320px);min-height:200px;border-top:1px solid var(--rule)}
 .stage .hint{margin:0;padding:0 14px 10px;font-size:13px;color:var(--muted)}
 .legend{position:absolute;right:14px;top:12px;display:flex;gap:12px;font-size:13px;color:var(--muted);flex-wrap:wrap;justify-content:flex-end;pointer-events:none}
 .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c);margin-right:5px;vertical-align:-1px}
@@ -153,6 +155,9 @@ function makeGraph(type,N,k){
 function finishGraph(g){const N=g.N;let s=0,s2=0,mx=0,hub=0;
   for(let i=0;i<N;i++){const d=g.adj[i].length;s+=d;s2+=d*d;if(d>mx){mx=d;hub=i;}}
   g.k=s/N;g.k2=s2/N;g.kmax=mx;g.hub=hub;return g;}
+function makeLattice(L){const n=L*L;const adj=Array.from({length:n},()=>[]);
+    for(let y=0;y<L;y++)for(let x=0;x<L;x++){const i=y*L+x;if(x+1<L){adj[i].push(i+1);adj[i+1].push(i);}if(y+1<L){adj[i].push(i+L);adj[i+L].push(i);}}
+    const gg=finishGraph({N:n,adj,type:'lat'});gg.px=new Float64Array(n);gg.py=new Float64Array(n);for(let i=0;i<n;i++){gg.px[i]=i%L;gg.py[i]=Math.floor(i/L);}return gg;}
 function frLayout(g,iters,t0,init){
   const N=g.N;if(init||!g.px){g.px=new Float64Array(N);g.py=new Float64Array(N);
     for(let i=0;i<N;i++){const a=Math.random()*6.283,r=Math.sqrt(Math.random())*.5;g.px[i]=r*Math.cos(a);g.py[i]=r*Math.sin(a);}}
@@ -551,101 +556,131 @@ const kCtl=(v=4,max=12)=>({key:'k',label:'Mean degree <i>⟨k⟩</i>',min:2,max,
 })();
 
 /* =========================================================
-   7.3  Majority vs voter on a 2D grid
+   7.3  Majority vs voter on networks
    ========================================================= */
 (function(){
-  const L=60,N=L*L;
-  const ui=buildPanel({id:'vot',refs:["F. Menczer, S. Fortunato, and C. A. Davis, <i>A First Course in Network Science</i>, Cambridge University Press (2020), Ch. 7.", "P. Clifford and A. Sudbury, “A model for spatial conflict,” <i>Biometrika</i> 60(3), 581–588 (1973).", "R. A. Holley and T. M. Liggett, “Ergodic theorems for weakly interacting infinite systems and the voter model,” <i>Annals of Probability</i> 3(4), 643–663 (1975).", "P. L. Krapivsky and S. Redner, “Dynamics of majority rule in two-state interacting spin systems,” <i>Physical Review Letters</i> 90, 238701 (2003).", "M. Mobilia, “Does a single zealot affect an infinite group of voters?” <i>Physical Review Letters</i> 91, 028701 (2003).", "C. Castellano, S. Fortunato, and V. Loreto, “Statistical physics of social dynamics,” <i>Reviews of Modern Physics</i> 81, 591–646 (2009)."],title:'Majority and voter models',
-    stageLabel:'Square grid of red and blue opinions',
+  const N=256;
+  const ui=buildPanel({id:'vot',refs:["F. Menczer, S. Fortunato, and C. A. Davis, <i>A First Course in Network Science</i>, Cambridge University Press (2020), Ch. 7.", "P. Clifford and A. Sudbury, “A model for spatial conflict,” <i>Biometrika</i> 60(3), 581–588 (1973).", "R. A. Holley and T. M. Liggett, “Ergodic theorems for weakly interacting infinite systems and the voter model,” <i>Annals of Probability</i> 3(4), 643–663 (1975).", "P. L. Krapivsky and S. Redner, “Dynamics of majority rule in two-state interacting spin systems,” <i>Physical Review Letters</i> 90, 238701 (2003).", "M. Mobilia, “Does a single zealot affect an infinite group of voters?” <i>Physical Review Letters</i> 91, 028701 (2003).", "C. Castellano, S. Fortunato, and V. Loreto, “Statistical physics of social dynamics,” <i>Reviews of Modern Physics</i> 81, 591–646 (2009)."],
+    title:'Majority and voter models',
+    stageLabel:'Network of nodes holding opinion 0 or opinion 1',
     legend:[['--s','opinion 0'],['--i','opinion 1']],
-    hint:'Periodic 60 × 60 grid; each cell looks at its 8 surrounding cells. Dots mark zealots.',
-    lead:'Two discrete rules for the same grid. Under majority, a node adopts the opinion held by most of its neighborhood. Under the voter model it simply copies one randomly chosen neighbor.',
-    formula:'majority: &nbsp;<i>o<sub>i</sub></i> ← majority of {<i>i</i>} ∪ <i>N</i>(<i>i</i>)<br>voter: &nbsp;<i>o<sub>i</sub></i> ← <i>o<sub>j</sub></i>, &nbsp;<i>j</i> random in <i>N</i>(<i>i</i>)<small>one sweep = L² random node updates</small>',
+    hint:'Click a node to flip its opinion. Ringed nodes are zealots. Node size follows degree.',
+    lead:'Two discrete rules on the same network. Under majority, a node adopts the opinion held by most of its neighborhood (itself and its neighbors). Under the voter model it simply copies one randomly chosen neighbor.',
+    formula:'majority: &nbsp;<i>o<sub>i</sub></i> ← majority of {<i>i</i>} ∪ <i>N</i>(<i>i</i>)<br>voter: &nbsp;<i>o<sub>i</sub></i> ← <i>o<sub>j</sub></i>, &nbsp;<i>j</i> random in <i>N</i>(<i>i</i>)<small>one sweep = N random node updates; ties keep the current opinion</small>',
     controls:[{type:'select',key:'rule',label:'Rule',options:[['maj','Majority'],['vot','Voter']],value:'vot'},
+      {type:'select',key:'net',label:'Network',options:[['er','Random (Erdős–Rényi)'],['ba','Scale-free (Barabási–Albert)'],['lat','2D lattice (16 × 16)']],value:'er'},
+      kCtl(6,12),
       {key:'f',label:'Initial share of opinion 1',min:0.05,max:0.95,step:0.01,value:0.5,fmt:v=>pct(v)},
-      {key:'z',label:'Zealots (always 0)',min:0,max:0.05,step:0.002,value:0,fmt:v=>(v*100).toFixed(1)+'%'},
-      {key:'nu',label:'Spontaneous change',min:0,max:0.02,step:0.001,value:0,fmt:v=>v.toFixed(3)},speedCtl(15,60)],
-    buttons:[['play','Play','primary'],['step','Step'],['reset','Reset'],['exit','Measure exit probability']],
+      {key:'z',label:'Zealots (always 0)',min:0,max:0.1,step:0.005,value:0,fmt:v=>(v*100).toFixed(1)+'%'},
+      {key:'nu',label:'Spontaneous change',min:0,max:0.02,step:0.001,value:0,fmt:v=>v.toFixed(3)},{key:'speed',label:'Speed (sweeps/s)',min:1,max:60,step:1,value:10}],
+    buttons:[['play','Play','primary'],['step','Step'],['reset','Reset'],['net','New network'],['exit','Measure exit probability']],
     readouts:[['f','Opinion 1'],['rho','Disagreeing links'],['t','Sweeps']],
     charts:[['ts','Share of opinion 1 over sweeps',130],['exit','Exit probability: chance opinion 1 wins',160]],
-    note:'Majority dynamics freeze into stable clusters and almost always end with the initial majority on top (a step function). The voter model coarsens slowly; opinion 1 wins with probability equal to its initial share (the diagonal).',
-    onChange:k=>{if(k!=='speed'){m.stop();m.reset();m.render();}}
+    note:'Majority dynamics quickly freeze, usually with both opinions surviving in separate clusters, and the initial majority almost always ends on top (a step function). The voter model keeps drifting until consensus, and opinion 1 wins with probability equal to its initial share (the diagonal). On the scale-free network, hubs speed the voter model up.',
+    onChange:k=>{if(k==='net'||k==='k'){newNet();exitData=null;m.render();}else if(k!=='speed'){m.stop();m.reset();m.render();}}
   });
-  let o,z,t,H,finished,exitData=null;
-  const nb=new Int32Array(N*8);for(let y=0;y<L;y++)for(let x=0;x<L;x++){let k=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;nb[(y*L+x)*8+k++]=((y+dy+L)%L)*L+((x+dx+L)%L);}}
-  function sweepGrid(O,Z,n,rule,nu,nbr){let ch=0;for(let s=0;s<n;s++){const i=ri(n);if(Z&&Z[i])continue;let v;
-      if(nu&&Math.random()<nu)v=ri(2);else if(rule==='vot')v=O[nbr[i*8+ri(8)]];else{let c=O[i];for(let k=0;k<8;k++)c+=O[nbr[i*8+k]];v=c>=5?1:0;}
-      if(v!==O[i]){O[i]=v;ch++;}}return ch;}
-  const share=()=>o.reduce((a,b)=>a+b,0)/N;
-  const rho=()=>{let d=0;for(let i=0;i<N;i++){if(o[i]!==o[nb[i*8+4]])d++;if(o[i]!==o[nb[i*8+6]])d++;}return d/(2*N);};
+  let g,o,z,t,H,finished,exitData=null;
+  function graphFor(type,n,k){if(type==='lat')return makeLattice(Math.round(Math.sqrt(n)));return makeGraph(type,n,k);}
+  function update(G,O,Z,i,rule,nu){if(Z&&Z[i])return 0;const a=G.adj[i];let v;
+    if(nu&&Math.random()<nu)v=ri(2);else if(!a.length)return 0;
+    else if(rule==='vot')v=O[a[ri(a.length)]];
+    else{let c=O[i]?1:-1;for(const j of a)c+=O[j]?1:-1;v=c>0?1:c<0?0:O[i];}
+    if(v!==O[i]){O[i]=v;return 1;}return 0;}
+  function sweep(G,O,Z,rule,nu){let ch=0;for(let s=0;s<G.N;s++)ch+=update(G,O,Z,ri(G.N),rule,nu);return ch;}
+  function frozen(G,O,Z){for(let i=0;i<G.N;i++){if(Z&&Z[i])continue;const a=G.adj[i];if(!a.length)continue;let c=O[i]?1:-1;for(const j of a)c+=O[j]?1:-1;
+      const v=c>0?1:c<0?0:O[i];if(v!==O[i])return false;}return true;}
+  function discord(G,O){let d=0,e=0;for(let a=0;a<G.N;a++)for(const b of G.adj[a])if(b>a){e++;if(O[a]!==O[b])d++;}return e?d/e:0;}
+  const share=()=>o.reduce((a,b)=>a+b,0)/g.N;
   const m={ui,
-    reset(){o=new Uint8Array(N);z=new Uint8Array(N);for(let i=0;i<N;i++){o[i]=Math.random()<ui.vals.f?1:0;if(Math.random()<ui.vals.z){z[i]=1;o[i]=0;}}
+    reset(){const n=g.N;o=new Uint8Array(n);z=new Uint8Array(n);for(let i=0;i<n;i++){o[i]=Math.random()<ui.vals.f?1:0;if(Math.random()<ui.vals.z){z[i]=1;o[i]=0;}}
       t=0;finished=false;H=[share()];ui.status('');},
-    step(){const ch=sweepGrid(o,ui.vals.z?z:null,N,ui.vals.rule,ui.vals.nu,nb);t++;const s=share();H.push(s);
-      if((s===0||s===1)&&!ui.vals.nu){finished=true;ui.status(`Consensus on opinion ${s} after ${t} sweeps.`);}
-      else if(ch===0&&!ui.vals.nu){finished=true;ui.status('Frozen: no cell wants to change.');}
+    step(){const rule=ui.vals.rule,nu=ui.vals.nu,Z=ui.vals.z?z:null;sweep(g,o,Z,rule,nu);t++;const s=share();H.push(s);
+      if(nu){if(t>=5000){finished=true;ui.status('Stopped after 5000 sweeps.');}return;}
+      if(s===0||s===1){finished=true;ui.status(`Consensus on opinion ${s} after ${t} sweeps.`);}
+      else if(rule==='maj'&&frozen(g,o,Z)){finished=true;ui.status(`Frozen after ${t} sweeps: both opinions survive in stable clusters.`);}
+      else if(rule==='vot'&&discord(g,o)===0){finished=true;ui.status('Every link joins nodes that agree (consensus within each connected piece).');}
       else if(t>=5000){finished=true;ui.status('Stopped after 5000 sweeps.');}},
     done:()=>finished,
-    render(){const {ctx,w,h}=fitCanvas(ui.canvas);ctx.clearRect(0,0,w,h);const s=Math.floor(Math.min(w-24,h-40)/L);const ox=(w-s*L)/2,oy=(h-30-s*L)/2+4;
-      const c0=TK.s,c1=TK.i;for(let y=0;y<L;y++)for(let x=0;x<L;x++){const i=y*L+x;ctx.fillStyle=o[i]?c1:c0;ctx.fillRect(ox+x*s,oy+y*s,s,s);}
-      if(ui.vals.z){ctx.fillStyle=TK.panel;for(let i=0;i<N;i++)if(z[i]){ctx.beginPath();ctx.arc(ox+(i%L+.5)*s,oy+(Math.floor(i/L)+.5)*s,Math.max(1.5,s*.22),0,6.3);ctx.fill();}}
-      ui.out('f',pct(share()));ui.out('rho',pct(rho()));ui.out('t',t);
+    render(){drawNet(ui.canvas,g,{color:i=>o[i]?TK.i:TK.s,ring:i=>z[i],sizeByDegree:g.type!=='lat',
+        edgeColor:(a,b)=>o[a]===o[b]?{c:o[a]?TK.i:TK.s,w:1,a:.35}:{c:TK.ink,w:1.1,a:.55,dash:[3,3]}});
+      ui.out('f',pct(share()));ui.out('rho',pct(discord(g,o)));ui.out('t',t);
       chart(ui.charts.ts,{xMax:Math.max(30,H.length-1),series:[{ys:H,color:TK.i}],yFmt:v=>v*100+'%'});
       const diag={pts:[[0,0],[1,1]],color:TK['rule-strong'],dash:[4,4],width:1};
       if(exitData&&exitData.maj.length)chart(ui.charts.exit,{xMax:1,yMax:1,xLabel:'initial share of opinion 1',series:[diag,{pts:exitData.maj,color:TK.ink,dots:true},{pts:exitData.vot,color:TK.i,dots:true}],xFmt:v=>v*100+'%',yFmt:v=>v*100+'%'});
       else chart(ui.charts.exit,{xMax:1,yMax:1,xLabel:'initial share of opinion 1',series:[diag],xFmt:v=>v*100+'%',yFmt:v=>v*100+'%',empty:'Press “Measure exit probability”'});}
   };
-  ui.btn.exit.onclick=()=>{m.stop();const l=10,n=l*l;const nb2=new Int32Array(n*8);
-    for(let y=0;y<l;y++)for(let x=0;x<l;x++){let k=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;nb2[(y*l+x)*8+k++]=((y+dy+l)%l)*l+((x+dx+l)%l);}}
+  function newNet(){m.stop&&m.stop();g=graphFor(ui.vals.net,N,ui.vals.k);if(g.type!=='lat')frLayout(g,260,0.12,true);ui.ctl_k.style.display=g.type==='lat'?'none':'';m.reset();m.render();}
+  ui.btn.net.onclick=()=>{newNet();exitData=null;m.render();};
+  ui.canvas.addEventListener('click',e=>{const i=hitNode(ui.canvas,e);if(i<0||z[i])return;o[i]=o[i]?0:1;finished=false;m.render();});
+  ui.btn.exit.onclick=()=>{m.stop();const type=ui.vals.net,k=ui.vals.k,n=100,RUNS=32;
     exitData={maj:[],vot:[]};const fs=[0.1,0.2,0.3,0.4,0.45,0.5,0.55,0.6,0.7,0.8,0.9];let idx=0;ui.btn.exit.disabled=true;
-    const once=(f,rule)=>{const O=new Uint8Array(n);const ids=shuffle([...Array(n).keys()]);const ones=Math.round(f*n);for(let i=0;i<ones;i++)O[ids[i]]=1;
-      for(let s=0;s<3000;s++){const ch=sweepGrid(O,null,n,rule,0,nb2);const sum=O.reduce((a,b)=>a+b,0);if(sum===0||sum===n||(rule==='maj'&&ch===0))break;}
-      const sum=O.reduce((a,b)=>a+b,0);return sum>n/2?1:sum<n/2?0:0.5;};
-    const tick=()=>{if(idx>=fs.length){ui.btn.exit.disabled=false;ui.status('Exit probability measured on a 10 × 10 grid, 32 runs per point.');return;}
-      const f=fs[idx];let a=0,b=0;for(let r=0;r<32;r++){a+=once(f,"maj")/32;b+=once(f,"vot")/32;}exitData.maj.push([f,a]);exitData.vot.push([f,b]);idx++;
+    const once=(f,rule)=>{const G=graphFor(type,n,k);const O=new Uint8Array(G.N);const ids=shuffle([...Array(G.N).keys()]);const ones=Math.round(f*G.N);for(let i=0;i<ones;i++)O[ids[i]]=1;
+      for(let s=0;s<3000;s++){sweep(G,O,null,rule,0);const sum=O.reduce((a,b)=>a+b,0);if(sum===0||sum===G.N)break;
+        if(rule==='maj'?frozen(G,O,null):discord(G,O)===0)break;}
+      const sum=O.reduce((a,b)=>a+b,0);return sum>G.N/2?1:sum<G.N/2?0:0.5;};
+    const label={er:'random networks',ba:'scale-free networks',lat:'a 10 × 10 lattice'}[type];
+    const tick=()=>{if(idx>=fs.length){ui.btn.exit.disabled=false;ui.status(`Exit probability measured on ${label} with N = 100, ${RUNS} runs per point (black: majority, red: voter).`);return;}
+      const f=fs[idx];let a=0,b=0;for(let r=0;r<RUNS;r++){a+=once(f,'maj')/RUNS;b+=once(f,'vot')/RUNS;}exitData.maj.push([f,a]);exitData.vot.push([f,b]);idx++;
       ui.status(`Measuring… ${idx}/${fs.length} (black: majority, red: voter)`);m.render();setTimeout(tick,0);};tick();};
   m.maxPerFrame=20;
-  attachRunner(m);m.init=()=>{m.reset();m.render();};
+  attachRunner(m);m.init=newNet;
   register('7.3','vot','Majority vs voter',m);
 })();
 
 /* =========================================================
-   7.3  Bounded-confidence model (continuous opinions)
+   7.3  Bounded-confidence model (continuous opinions) on networks
    ========================================================= */
 (function(){
-  const N=200,TMAX=160;
+  const N=200,TMAX=400;
   const ui=buildPanel({id:'bc',refs:["F. Menczer, S. Fortunato, and C. A. Davis, <i>A First Course in Network Science</i>, Cambridge University Press (2020), Ch. 7.", "G. Deffuant, D. Neau, F. Amblard, and G. Weisbuch, “Mixing beliefs among interacting agents,” <i>Advances in Complex Systems</i> 3, 87–98 (2000).", "R. Hegselmann and U. Krause, “Opinion dynamics and bounded confidence: Models, analysis and simulation,” <i>Journal of Artificial Societies and Social Simulation</i> 5(3) (2002).", "C. Castellano, S. Fortunato, and V. Loreto, “Statistical physics of social dynamics,” <i>Reviews of Modern Physics</i> 81, 591–646 (2009)."],title:'Bounded-confidence model',
-    stageLabel:'Opinion trajectories of every node over iterations',
-    hint:'Each line is one person’s opinion over time, colored by where they started.',
-    lead:'Opinions are numbers between 0 and 1. Two neighbors only talk if their opinions are closer than the confidence bound ε, and then each moves part of the way toward the other.',
-    formula:'if |<i>o<sub>i</sub></i> − <i>o<sub>j</sub></i>| &lt; <i>ε</i>: <br><i>o<sub>i</sub></i> ← <i>o<sub>i</sub></i> + <i>μ</i>(<i>o<sub>j</sub></i> − <i>o<sub>i</sub></i>), &nbsp;<i>o<sub>j</sub></i> ← <i>o<sub>j</sub></i> + <i>μ</i>(<i>o<sub>i</sub></i> − <i>o<sub>j</sub></i>)<small>the mean opinion is conserved at every update</small>',
-    controls:[{type:'select',key:'net',label:'Who can meet',options:[['mix','Anyone (well mixed)'],['er','Network neighbors (random, ⟨k⟩ = 6)']],value:'mix'},
-      {key:'eps',label:'Confidence bound <i>ε</i>',min:0.03,max:0.6,step:0.01,value:0.15,fmt:v=>v.toFixed(2)},
+    stageLabel:'Network colored by continuous opinion, with opinion trajectories of every node below',
+    hint:'Top: the network, colored by current opinion; solid links can still talk (|Δo| &lt; ε), dashed links cannot. Bottom: each line is one node’s opinion over time, colored by where it started.',
+    lead:'Opinions are numbers between 0 and 1. A node only talks with a network neighbor whose opinion is closer than the confidence bound ε, and then each moves part of the way toward the other.',
+    formula:'pick <i>j</i> ∈ <i>N</i>(<i>i</i>); if |<i>o<sub>i</sub></i> − <i>o<sub>j</sub></i>| &lt; <i>ε</i>: <br><i>o<sub>i</sub></i> ← <i>o<sub>i</sub></i> + <i>μ</i>(<i>o<sub>j</sub></i> − <i>o<sub>i</sub></i>), &nbsp;<i>o<sub>j</sub></i> ← <i>o<sub>j</sub></i> + <i>μ</i>(<i>o<sub>i</sub></i> − <i>o<sub>j</sub></i>)<small>the mean opinion is conserved at every update</small>',
+    controls:[{type:'select',key:'net',label:'Network',options:[['er','Random (Erdős–Rényi)'],['ba','Scale-free (Barabási–Albert)'],['lat','2D lattice (14 × 14)'],['mix','Complete graph (everyone meets)']],value:'er'},
+      kCtl(6,16),
+      {key:'eps',label:'Confidence bound <i>ε</i>',min:0.03,max:0.6,step:0.01,value:0.2,fmt:v=>v.toFixed(2)},
       {key:'mu',label:'Convergence <i>μ</i>',min:0.05,max:0.5,step:0.01,value:0.3,fmt:v=>v.toFixed(2)},speedCtl(12,40)],
-    buttons:[['play','Play','primary'],['step','Step'],['reset','Reset']],
-    readouts:[['cl','Opinion clusters'],['mean','Mean opinion'],['t','Iteration']],
+    buttons:[['play','Play','primary'],['step','Step'],['reset','Reset'],['net','New network']],
+    readouts:[['cl','Opinion clusters'],['talk','Links that can talk'],['mean','Mean opinion'],['t','Iteration']],
     charts:[['hist','Current distribution of opinions',130]],
-    note:'Small ε gives several surviving opinion groups, roughly 1/(2ε) of them; once ε is above about 0.25 everyone meets at the average, 1/2.',
-    onChange:k=>{if(k!=='speed'){m.stop();if(k==='net')g=makeGraph('er',N,6);m.reset();m.render();}}
+    note:'On the complete graph, roughly 1/(2ε) opinion groups survive and ε above about 0.25 brings everyone to 1/2. Sparse networks are different: a node can only reach agreement through its own neighbors, so more small groups survive, and the same opinion can settle at slightly different values in different parts of the network. Compare the lattice with the random network at the same ε.',
+    onChange:k=>{if(k==='net'||k==='k')newNet();else if(k!=='speed'){m.stop();m.reset();m.render();}}
   });
-  let o,o0,H,t,finished,g=makeGraph('er',N,6);const order=[...Array(N).keys()];
-  const clusters=()=>{const s=Array.from(o).sort((a,b)=>a-b);let c=1;for(let i=1;i<N;i++)if(s[i]-s[i-1]>0.02)c++;return c;};
+  const traj=el('<canvas class="traj" role="img" aria-label="Opinion trajectories over iterations"></canvas>');
+  ui.canvas.after(traj);
+  let g,o,o0,H,t,finished;const order=[...Array(N).keys()];
+  const mixMode=()=>ui.vals.net==='mix';
+  const clusters=()=>{const s=Array.from(o).sort((a,b)=>a-b);let c=1;for(let i=1;i<s.length;i++)if(s[i]-s[i-1]>0.02)c++;return c;};
+  function talkFrac(){if(mixMode())return null;let a=0,e=0;const eps=ui.vals.eps;for(let i=0;i<g.N;i++)for(const j of g.adj[i])if(j>i){e++;if(Math.abs(o[i]-o[j])<eps)a++;}return e?a/e:0;}
+  function newNet(){m.stop&&m.stop();const type=ui.vals.net;
+    if(type==='lat')g=makeLattice(14);
+    else if(type==='mix'){g=finishGraph({N,adj:Array.from({length:N},()=>[]),type:'mix'});g.px=new Float64Array(N);g.py=new Float64Array(N);
+      for(let i=0;i<N;i++){const r=Math.sqrt(i+0.5),a=i*2.39996;g.px[i]=r*Math.cos(a);g.py[i]=r*Math.sin(a);}g.k=N-1;}
+    else{g=makeGraph(type,N,ui.vals.k);frLayout(g,260,0.12,true);}
+    ui.ctl_k.style.display=(type==='er'||type==='ba')?'':'none';m.reset();m.render();}
   const m={ui,
-    reset(){o=new Float64Array(N);for(let i=0;i<N;i++)o[i]=Math.random();o0=o.slice();H=[Float32Array.from(o)];t=0;finished=false;ui.status('');},
-    step(){const e=ui.vals.eps,mu=ui.vals.mu,mix=ui.vals.net==='mix';shuffle(order);let mx=0;
-      for(const i of order){let j;if(mix){j=ri(N-1);if(j>=i)j++;}else{const a=g.adj[i];if(!a.length)continue;j=a[ri(a.length)];}
+    reset(){const n=g.N;o=new Float64Array(n);for(let i=0;i<n;i++)o[i]=Math.random();o0=o.slice();H=[Float32Array.from(o)];t=0;finished=false;ui.status('');},
+    step(){const e=ui.vals.eps,mu=ui.vals.mu,mix=mixMode(),n=g.N;const ord=order.length===n?order:[...Array(n).keys()];shuffle(ord);let mx=0;
+      for(const i of ord){let j;if(mix){j=ri(n-1);if(j>=i)j++;}else{const a=g.adj[i];if(!a.length)continue;j=a[ri(a.length)];}
         const d=o[j]-o[i];if(Math.abs(d)<e){o[i]+=mu*d;o[j]-=mu*d;mx=Math.max(mx,Math.abs(mu*d));}}
-      t++;H.push(Float32Array.from(o));if(mx<1e-4||t>=TMAX){finished=true;ui.status(`Settled into ${clusters()} opinion cluster${clusters()>1?'s':''}.`);}},
+      t++;H.push(Float32Array.from(o));
+      if(mx<1e-4||t>=TMAX){finished=true;const c=clusters();ui.status(t>=TMAX?`Stopped after ${TMAX} iterations with ${c} opinion clusters.`:`Settled into ${c} opinion cluster${c>1?'s':''}.`);}},
     done:()=>finished,
-    render(){const c=ui.canvas;const o2=chart(c,{xMax:Math.max(40,H.length-1),yMax:1,xLabel:'iteration',yLabel:'opinion',yTicks:5});
-      const {ctx,X,Y}=o2;ctx.lineWidth=1;ctx.globalAlpha=0.45;
-      for(let i=0;i<N;i++){ctx.strokeStyle=ramp(o0[i]);ctx.beginPath();for(let k=0;k<H.length;k++){k?ctx.lineTo(X(k),Y(H[k][i])):ctx.moveTo(X(k),Y(H[k][i]));}ctx.stroke();}
+    render(){const eps=ui.vals.eps,mix=mixMode();
+      drawNet(ui.canvas,g,{color:i=>ramp(o[i]),sizeByDegree:g.type==='ba',
+        edgeColor:(a,b)=>Math.abs(o[a]-o[b])<eps?{c:ramp((o[a]+o[b])/2),w:1.2,a:.75}:{c:TK.muted,w:0.7,a:.35,dash:[3,3]}});
+      const n=g.N;const tc=chart(traj,{xMax:Math.max(40,H.length-1),yMax:1,xLabel:'iteration',yLabel:'opinion',yTicks:5});
+      const {ctx,X,Y}=tc;ctx.lineWidth=1;ctx.globalAlpha=0.45;
+      for(let i=0;i<n;i++){ctx.strokeStyle=ramp(o0[i]);ctx.beginPath();for(let k=0;k<H.length;k++){k?ctx.lineTo(X(k),Y(H[k][i])):ctx.moveTo(X(k),Y(H[k][i]));}ctx.stroke();}
       ctx.globalAlpha=1;
-      const bins=new Array(40).fill(0);for(let i=0;i<N;i++)bins[Math.min(39,Math.floor(o[i]*40))]++;
+      const bins=new Array(40).fill(0);for(let i=0;i<n;i++)bins[Math.min(39,Math.floor(o[i]*40))]++;
       chart(ui.charts.hist,{xMax:1,yMax:Math.max(10,Math.max(...bins)*1.1),bars:[{ys:bins,color:TK.ink}],yTicks:3});
-      ui.out('cl',clusters());ui.out('mean',(o.reduce((a,b)=>a+b,0)/N).toFixed(3));ui.out('t',t);}
+      const tf=talkFrac();ui.out('cl',clusters());ui.out('talk',tf===null?'all pairs':pct(tf));ui.out('mean',(o.reduce((a,b)=>a+b,0)/n).toFixed(3));ui.out('t',t);
+      ui.hint(mix?'Top: everyone can meet everyone, so links are not drawn. Bottom: each line is one node’s opinion over time, colored by where it started.':'Top: the network, colored by current opinion; solid links can still talk (|Δo| &lt; ε), dashed links cannot. Bottom: each line is one node’s opinion over time, colored by where it started.');}
   };
-  attachRunner(m);m.init=()=>{m.reset();m.render();};
+  ui.btn.net.onclick=newNet;
+  attachRunner(m);m.init=newNet;
   register('7.3','bc','Bounded confidence',m);
 })();
 

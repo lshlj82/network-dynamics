@@ -20,7 +20,7 @@ Each model has its own address, so you can link straight to one from slides or a
 | 7.1 Influence | Independent cascade model | `#ic` |
 | 7.2 Epidemics | SI, SIS, SIR, and SIRS on networks | `#epi` |
 | 7.2 Epidemics | Rumor spreading (ignorant, spreader, stifler) | `#rum` |
-| 7.3 Opinions | Majority vs voter model on a 2D grid | `#vot` |
+| 7.3 Opinions | Majority vs voter model on networks | `#vot` |
 | 7.3 Opinions | Bounded-confidence model | `#bc` |
 | 7.3 Opinions | Coevolution of networks and opinions | `#co` |
 
@@ -36,7 +36,7 @@ Each model has its own address, so you can link straight to one from slides or a
 
 **Rumor spreading.** Spreaders stop when they meet people who already know the rumor, so a fraction of the population never hears it.
 
-**Majority vs voter.** Both rules on a periodic 60 × 60 grid with optional zealots and spontaneous opinion changes. An exit-probability experiment shows the step function for majority dynamics and the diagonal for the voter model.
+**Majority vs voter.** Both rules on random, scale-free, or 2D lattice networks, with optional zealots and spontaneous opinion changes. Links between nodes that disagree are drawn dashed. An exit-probability experiment on the chosen network type shows the step function for majority dynamics and the diagonal for the voter model.
 
 **Bounded confidence.** Continuous opinions in [0, 1] that interact only within the confidence bound ε. The trajectory plot shows clusters forming while the mean opinion stays constant.
 
